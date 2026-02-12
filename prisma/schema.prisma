@@ -1,0 +1,40 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Profile {
+  id          Int           @id
+  displayName String        @default("Learner")
+  totalXp     Int           @default(0)
+  attempts    GraphAttempt[]
+  badgeUnlock BadgeUnlock[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model GraphAttempt {
+  id          Int      @id @default(autoincrement())
+  profileId   Int
+  profile     Profile  @relation(fields: [profileId], references: [id])
+  challengeId String
+  family      String
+  functionText String
+  isCorrect   Boolean
+  xpAwarded   Int
+  createdAt   DateTime @default(now())
+}
+
+model BadgeUnlock {
+  id         Int      @id @default(autoincrement())
+  profileId  Int
+  profile    Profile  @relation(fields: [profileId], references: [id])
+  badgeCode  String
+  unlockedAt DateTime @default(now())
+
+  @@unique([profileId, badgeCode])
+}
