@@ -5,6 +5,7 @@ import { getOrCreateProfile } from "@/lib/profile";
 import { prisma } from "@/lib/prisma";
 import { getTrigCardById } from "@/lib/trigonometry/deck";
 import type { ConcreteFamily } from "@/types/challenge";
+import { lgsModes, type LgsMode } from "@/types/lgs";
 import { trigCategories, type TrigCategory } from "@/types/trigonometry";
 
 const VALID_FAMILIES = new Set<ConcreteFamily>([
@@ -14,6 +15,7 @@ const VALID_FAMILIES = new Set<ConcreteFamily>([
   "rational"
 ]);
 const VALID_TRIG_CATEGORIES = new Set<TrigCategory>(trigCategories);
+const VALID_LGS_MODES = new Set<LgsMode>(lgsModes);
 
 type AttemptBody = {
   challengeId?: string;
@@ -65,7 +67,7 @@ export async function POST(request: Request) {
     });
   });
 
-  const [graphAttempts, trigAttempts] = await Promise.all([
+  const [graphAttempts, trigAttempts, lgsAttempts] = await Promise.all([
     prisma.graphAttempt.findMany({
       where: { profileId: profile.id },
       select: { family: true, isCorrect: true }
@@ -73,6 +75,10 @@ export async function POST(request: Request) {
     prisma.trigFlashcardAttempt.findMany({
       where: { profileId: profile.id },
       select: { category: true, isCorrect: true }
+    }),
+    prisma.lgsAttempt.findMany({
+      where: { profileId: profile.id },
+      select: { mode: true, isCorrect: true }
     })
   ]);
 
@@ -91,6 +97,12 @@ export async function POST(request: Request) {
         VALID_TRIG_CATEGORIES.has(category as TrigCategory)
     );
 
+  const lgsAttemptCount = lgsAttempts.length;
+  const lgsCorrect = lgsAttempts.filter((attempt) => attempt.isCorrect).length;
+  const modesAttempted = lgsAttempts
+    .map((attempt) => attempt.mode)
+    .filter((mode): mode is LgsMode => VALID_LGS_MODES.has(mode as LgsMode));
+
   const nowBadges = allBadgesForStats({
     graphing: {
       attempts: graphingAttempts,
@@ -101,6 +113,11 @@ export async function POST(request: Request) {
       attempts: trigAttemptCount,
       correct: trigCorrect,
       categoriesAttempted
+    },
+    lgs: {
+      attempts: lgsAttemptCount,
+      correct: lgsCorrect,
+      modesAttempted
     }
   });
 

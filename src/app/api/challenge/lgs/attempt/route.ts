@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 
-import { prisma } from "@/lib/prisma";
-import { getOrCreateProfile } from "@/lib/profile";
 import { BADGE_DETAILS, allBadgesForStats, levelFromXp, xpForAttempt } from "@/lib/gamification/progress";
+import { getOrCreateProfile } from "@/lib/profile";
+import { prisma } from "@/lib/prisma";
 import type { ConcreteFamily } from "@/types/challenge";
 import { lgsModes, type LgsMode } from "@/types/lgs";
 import { trigCategories, type TrigCategory } from "@/types/trigonometry";
@@ -18,20 +18,33 @@ const VALID_LGS_MODES = new Set<LgsMode>(lgsModes);
 
 type AttemptBody = {
   challengeId?: string;
-  family?: string;
-  displayText?: string;
+  matrixLabel?: string;
+  systemSize?: number;
+  mode?: string;
+  operationCount?: number;
+  solvedValues?: number[];
   isCorrect?: boolean;
 };
 
 export async function POST(request: Request) {
   const body = (await request.json()) as AttemptBody;
 
+  const solvedValuesValid =
+    Array.isArray(body.solvedValues) &&
+    body.solvedValues.every((value) => typeof value === "number" && Number.isFinite(value));
+
   if (
     !body.challengeId ||
-    !body.displayText ||
+    !body.matrixLabel ||
+    !body.systemSize ||
+    !Number.isInteger(body.systemSize) ||
+    typeof body.operationCount !== "number" ||
+    body.operationCount < 0 ||
+    !body.mode ||
+    !VALID_LGS_MODES.has(body.mode as LgsMode) ||
     typeof body.isCorrect !== "boolean" ||
-    !body.family ||
-    !VALID_FAMILIES.has(body.family as ConcreteFamily)
+    !solvedValuesValid ||
+    body.solvedValues!.length !== body.systemSize
   ) {
     return NextResponse.json({ error: "Invalid attempt payload" }, { status: 400 });
   }
@@ -40,12 +53,15 @@ export async function POST(request: Request) {
   const xpAwarded = xpForAttempt(body.isCorrect);
 
   await prisma.$transaction(async (tx) => {
-    await tx.graphAttempt.create({
+    await tx.lgsAttempt.create({
       data: {
         profileId: profile.id,
         challengeId: body.challengeId!,
-        family: body.family!,
-        functionText: body.displayText!,
+        matrixLabel: body.matrixLabel!,
+        systemSize: body.systemSize!,
+        mode: body.mode!,
+        operationCount: Math.floor(body.operationCount!),
+        solvedValues: JSON.stringify(body.solvedValues),
         isCorrect: body.isCorrect!,
         xpAwarded
       }
@@ -119,7 +135,7 @@ export async function POST(request: Request) {
     where: { profileId: profile.id },
     select: { badgeCode: true }
   });
-  const existingSet = new Set(existingBadges.map((b) => b.badgeCode));
+  const existingSet = new Set(existingBadges.map((badge) => badge.badgeCode));
 
   const newBadges = nowBadges.filter((badge) => !existingSet.has(badge));
   if (newBadges.length > 0) {

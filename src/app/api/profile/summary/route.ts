@@ -8,7 +8,7 @@ import { summarizePracticeData } from "@/lib/profile/summary";
 export async function GET() {
   const profile = await getOrCreateProfile();
 
-  const [graphAttempts, trigAttempts, badges] = await Promise.all([
+  const [graphAttempts, trigAttempts, lgsAttempts, badges] = await Promise.all([
     prisma.graphAttempt.findMany({
       where: { profileId: profile.id },
       select: {
@@ -33,6 +33,18 @@ export async function GET() {
         createdAt: true
       }
     }),
+    prisma.lgsAttempt.findMany({
+      where: { profileId: profile.id },
+      select: {
+        id: true,
+        matrixLabel: true,
+        mode: true,
+        solvedValues: true,
+        isCorrect: true,
+        xpAwarded: true,
+        createdAt: true
+      }
+    }),
     prisma.badgeUnlock.findMany({
       where: { profileId: profile.id },
       orderBy: { unlockedAt: "asc" },
@@ -46,6 +58,7 @@ export async function GET() {
   const summary = summarizePracticeData({
     graphAttempts,
     trigAttempts,
+    lgsAttempts,
     recentLimit: 15
   });
 
@@ -68,6 +81,7 @@ export async function GET() {
     })),
     attemptsByFamily: summary.attemptsByFamily,
     attemptsByTrigCategory: summary.attemptsByTrigCategory,
+    attemptsByLgsMode: summary.attemptsByLgsMode,
     recentAttempts: summary.recentAttempts
   });
 }

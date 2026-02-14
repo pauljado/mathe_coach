@@ -1,4 +1,5 @@
 import type { ConcreteFamily } from "@/types/challenge";
+import type { LgsMode } from "@/types/lgs";
 import type { TrigCategory } from "@/types/trigonometry";
 
 export type BadgeCode =
@@ -9,7 +10,11 @@ export type BadgeCode =
   | "TRIG_FIRST_TRY"
   | "TRIG_TEN_ATTEMPTS"
   | "TRIG_ACCURACY_75"
-  | "TRIG_CATEGORY_EXPLORER";
+  | "TRIG_CATEGORY_EXPLORER"
+  | "LGS_FIRST_TRY"
+  | "LGS_TEN_ATTEMPTS"
+  | "LGS_ACCURACY_75"
+  | "LGS_MODE_EXPLORER";
 
 export const BADGE_DETAILS: Record<BadgeCode, { label: string; description: string }> = {
   FIRST_TRY: {
@@ -43,6 +48,22 @@ export const BADGE_DETAILS: Record<BadgeCode, { label: string; description: stri
   TRIG_CATEGORY_EXPLORER: {
     label: "Trig Category Explorer",
     description: "Try at least one card in every trigonometry category."
+  },
+  LGS_FIRST_TRY: {
+    label: "Zero Hunter",
+    description: "Complete your first Gaussian elimination challenge."
+  },
+  LGS_TEN_ATTEMPTS: {
+    label: "Row Operator",
+    description: "Log 10 total Gaussian elimination challenges."
+  },
+  LGS_ACCURACY_75: {
+    label: "Echelon Accuracy",
+    description: "Reach at least 75% LGS accuracy after 20 attempts."
+  },
+  LGS_MODE_EXPLORER: {
+    label: "Mode Explorer",
+    description: "Complete at least one LGS challenge in strategy and hardcore mode."
   }
 };
 
@@ -125,6 +146,32 @@ export function trigBadgesForStats(input: {
   return badges;
 }
 
+export function lgsBadgesForStats(input: {
+  attempts: number;
+  correct: number;
+  modesAttempted: LgsMode[];
+}): BadgeCode[] {
+  const badges: BadgeCode[] = [];
+  const { attempts, correct, modesAttempted } = input;
+
+  if (attempts >= 1) badges.push("LGS_FIRST_TRY");
+  if (attempts >= 10) badges.push("LGS_TEN_ATTEMPTS");
+
+  if (attempts >= 20) {
+    const accuracy = attempts === 0 ? 0 : (correct / attempts) * 100;
+    if (accuracy >= 75) {
+      badges.push("LGS_ACCURACY_75");
+    }
+  }
+
+  const set = new Set(modesAttempted);
+  if (set.has("strategy") && set.has("hardcore")) {
+    badges.push("LGS_MODE_EXPLORER");
+  }
+
+  return badges;
+}
+
 export function allBadgesForStats(input: {
   graphing: {
     attempts: number;
@@ -136,6 +183,15 @@ export function allBadgesForStats(input: {
     correct: number;
     categoriesAttempted: TrigCategory[];
   };
+  lgs: {
+    attempts: number;
+    correct: number;
+    modesAttempted: LgsMode[];
+  };
 }): BadgeCode[] {
-  return [...badgesForStats(input.graphing), ...trigBadgesForStats(input.trigonometry)];
+  return [
+    ...badgesForStats(input.graphing),
+    ...trigBadgesForStats(input.trigonometry),
+    ...lgsBadgesForStats(input.lgs)
+  ];
 }

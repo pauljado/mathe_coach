@@ -18,6 +18,9 @@ export default function HomePage() {
           <Link className="btn btn-outline" href="/challenge/trigonometry">
             Start Trigonometry Flashcards
           </Link>
+          <Link className="btn btn-outline" href="/challenge/lgs">
+            Start LGS Solver
+          </Link>
           <Link className="btn btn-outline" href="/profile">
             View Profile
           </Link>
@@ -40,9 +43,10 @@ export default function HomePage() {
             status="active"
           />
           <ChallengeCard
-            title="Word Problem Lab"
-            description="Translate real-world prompts into mathematical models."
-            status="soon"
+            title="Interactive LGS Solver"
+            description="Use row operations, hunt structural zeros, and finish with back-substitution."
+            href="/challenge/lgs"
+            status="active"
           />
         </div>
       </div>

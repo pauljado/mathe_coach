@@ -13,6 +13,7 @@ model Profile {
   totalXp     Int           @default(0)
   attempts    GraphAttempt[]
   trigAttempts TrigFlashcardAttempt[]
+  lgsAttempts LgsAttempt[]
   badgeUnlock BadgeUnlock[]
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
@@ -55,4 +56,19 @@ model TrigFlashcardAttempt {
   isCorrect  Boolean
   xpAwarded  Int
   createdAt  DateTime @default(now())
+}
+
+model LgsAttempt {
+  id             Int      @id @default(autoincrement())
+  profileId      Int
+  profile        Profile  @relation(fields: [profileId], references: [id])
+  challengeId    String
+  matrixLabel    String
+  systemSize     Int
+  mode           String
+  operationCount Int
+  solvedValues   String
+  isCorrect      Boolean
+  xpAwarded      Int
+  createdAt      DateTime @default(now())
 }

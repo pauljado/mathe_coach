@@ -28,6 +28,7 @@ export default function RootLayout({
             <nav aria-label="Main navigation" className="main-nav">
               <Link href="/challenge/graphing">Graphing</Link>
               <Link href="/challenge/trigonometry">Trigonometry</Link>
+              <Link href="/challenge/lgs">LGS Solver</Link>
               <Link href="/profile">Profile</Link>
             </nav>
           </div>

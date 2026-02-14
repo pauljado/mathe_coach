@@ -1,6 +1,6 @@
 # GraphQuest Math Teaching App
 
-Lightweight Next.js + Prisma app for graph sketching practice and trigonometry recall.
+Lightweight Next.js + Prisma app for graph sketching practice, trigonometry recall, and Gaussian elimination training.
 
 ## Features
 
@@ -15,6 +15,11 @@ Lightweight Next.js + Prisma app for graph sketching practice and trigonometry r
   - identities and angle theorems
   - inverse trig ranges
   - applied sinusoid forms
+- Interactive Gaussian elimination challenge with:
+  - augmented matrix-first workflow
+  - drag-and-combine row operations with live preview
+  - strategy and hardcore calculation modes
+  - history/undo timeline and back-substitution finale
 - Paper-sketch workflow:
   1. Read prompt
   2. Sketch on paper
@@ -61,6 +66,8 @@ npm run dev
 - `POST /api/challenge/attempt`
 - `GET /api/challenge/trigonometry/next?categories=<csv>`
 - `POST /api/challenge/trigonometry/attempt`
+- `GET /api/challenge/lgs/next?size=3|4`
+- `POST /api/challenge/lgs/attempt`
 - `GET /api/profile/summary`
 
 ## Testing

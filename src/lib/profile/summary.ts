@@ -18,6 +18,16 @@ export type TrigAttemptSummary = {
   createdAt: Date;
 };
 
+export type LgsAttemptSummary = {
+  id: number;
+  matrixLabel: string;
+  mode: string;
+  solvedValues: string;
+  isCorrect: boolean;
+  xpAwarded: number;
+  createdAt: Date;
+};
+
 export type ChallengeStats = {
   attempts: number;
   correct: number;
@@ -27,7 +37,7 @@ export type ChallengeStats = {
 
 export type SummaryRecentAttempt = {
   id: string;
-  challengeType: "graphing" | "trigonometry";
+  challengeType: "graphing" | "trigonometry" | "lgs";
   topic: string;
   prompt: string;
   promptSecondary: string | null;
@@ -49,22 +59,25 @@ function createStats(attempts: number, correct: number): ChallengeStats {
 export function summarizePracticeData(input: {
   graphAttempts: GraphAttemptSummary[];
   trigAttempts: TrigAttemptSummary[];
+  lgsAttempts: LgsAttemptSummary[];
   recentLimit?: number;
 }) {
-  const { graphAttempts, trigAttempts } = input;
+  const { graphAttempts, trigAttempts, lgsAttempts } = input;
   const recentLimit = input.recentLimit ?? 15;
 
   const graphingCorrect = graphAttempts.filter((attempt) => attempt.isCorrect).length;
   const trigCorrect = trigAttempts.filter((attempt) => attempt.isCorrect).length;
+  const lgsCorrect = lgsAttempts.filter((attempt) => attempt.isCorrect).length;
 
   const challengeBreakdown = {
     graphing: createStats(graphAttempts.length, graphingCorrect),
-    trigonometry: createStats(trigAttempts.length, trigCorrect)
+    trigonometry: createStats(trigAttempts.length, trigCorrect),
+    lgs: createStats(lgsAttempts.length, lgsCorrect)
   };
 
   const totals = createStats(
-    graphAttempts.length + trigAttempts.length,
-    graphingCorrect + trigCorrect
+    graphAttempts.length + trigAttempts.length + lgsAttempts.length,
+    graphingCorrect + trigCorrect + lgsCorrect
   );
 
   const attemptsByFamily = graphAttempts.reduce<Record<string, number>>((acc, attempt) => {
@@ -74,6 +87,11 @@ export function summarizePracticeData(input: {
 
   const attemptsByTrigCategory = trigAttempts.reduce<Record<string, number>>((acc, attempt) => {
     acc[attempt.category] = (acc[attempt.category] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const attemptsByLgsMode = lgsAttempts.reduce<Record<string, number>>((acc, attempt) => {
+    acc[attempt.mode] = (acc[attempt.mode] ?? 0) + 1;
     return acc;
   }, {});
 
@@ -99,6 +117,17 @@ export function summarizePracticeData(input: {
       isCorrect: attempt.isCorrect,
       xpAwarded: attempt.xpAwarded,
       createdAt: attempt.createdAt
+    })),
+    ...lgsAttempts.map<SummaryRecentAttempt>((attempt) => ({
+      id: `lgs-${attempt.id}`,
+      challengeType: "lgs",
+      topic: attempt.mode,
+      prompt: attempt.matrixLabel,
+      promptSecondary: null,
+      userAnswer: attempt.solvedValues,
+      isCorrect: attempt.isCorrect,
+      xpAwarded: attempt.xpAwarded,
+      createdAt: attempt.createdAt
     }))
   ]
     .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
@@ -109,6 +138,7 @@ export function summarizePracticeData(input: {
     challengeBreakdown,
     attemptsByFamily,
     attemptsByTrigCategory,
+    attemptsByLgsMode,
     recentAttempts
   };
 }

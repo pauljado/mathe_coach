@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { BadgeGrid } from "@/components/BadgeGrid";
 
-type ChallengeType = "graphing" | "trigonometry";
+type ChallengeType = "graphing" | "trigonometry" | "lgs";
 
 type ProfileSummary = {
   displayName: string;
@@ -23,6 +23,7 @@ type ProfileSummary = {
   badges: Array<{ code: string; label: string; description: string; unlockedAt: string }>;
   attemptsByFamily: Record<string, number>;
   attemptsByTrigCategory: Record<string, number>;
+  attemptsByLgsMode: Record<string, number>;
   recentAttempts: Array<{
     id: string;
     challengeType: ChallengeType;
@@ -102,7 +103,7 @@ export default function ProfilePage() {
     <section className="grid" style={{ gap: "1rem" }}>
       <div className="card profile-header">
         <h1>{summary.displayName}</h1>
-        <p className="muted">Track your graphing and trigonometry progress with shared XP.</p>
+        <p className="muted">Track your graphing, trigonometry, and LGS progress with shared XP.</p>
       </div>
 
       <div className="grid grid-3">
@@ -147,6 +148,7 @@ export default function ProfilePage() {
             >
               <option value="graphing">Graphing challenge</option>
               <option value="trigonometry">Trigonometry flashcards</option>
+              <option value="lgs">Gaussian elimination</option>
             </select>
           </label>
           <button
@@ -160,7 +162,13 @@ export default function ProfilePage() {
         </div>
 
         <div className="card split-summary-card">
-          <h2>{selectedChallenge === "graphing" ? "Graphing" : "Trigonometry"} Summary</h2>
+          <h2>
+            {selectedChallenge === "graphing"
+              ? "Graphing"
+              : selectedChallenge === "trigonometry"
+                ? "Trigonometry"
+                : "Gaussian Elimination"} Summary
+          </h2>
           <p className="muted">
             Accuracy: {selectedBreakdown.accuracy}% ({selectedBreakdown.correct} correct / {selectedBreakdown.attempts} attempts)
           </p>
@@ -242,6 +250,51 @@ export default function ProfilePage() {
                         <p className="muted">{attempt.prompt}</p>
                         {attempt.promptSecondary ? <p className="muted">{attempt.promptSecondary}</p> : null}
                         {attempt.userAnswer ? <p className="muted">Your answer: {attempt.userAnswer}</p> : null}
+                      </div>
+                      <div>
+                        <span className={attempt.isCorrect ? "result-good" : "result-bad"}>
+                          {attempt.isCorrect ? "Correct" : "Wrong"}
+                        </span>
+                        <p className="muted">+{attempt.xpAwarded} XP</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </article>
+          </div>
+        ) : null}
+
+        {selectedChallenge === "lgs" && showAttemptStats ? (
+          <div className="grid grid-2">
+            <article className="card family-card">
+              <h2>Attempts by Mode</h2>
+              {Object.keys(summary.attemptsByLgsMode).length === 0 ? (
+                <p className="muted">No attempts yet.</p>
+              ) : (
+                <ul className="plain-list">
+                  {Object.entries(summary.attemptsByLgsMode).map(([mode, count]) => (
+                    <li key={mode}>
+                      <span>{humanizeTopic(mode)}</span>
+                      <strong>{count}</strong>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </article>
+
+            <article className="card family-card">
+              <h2>Recent LGS Attempts</h2>
+              {filteredRecentAttempts.length === 0 ? (
+                <p className="muted">Start your first LGS challenge to populate this feed.</p>
+              ) : (
+                <ul className="plain-list attempts-list">
+                  {filteredRecentAttempts.map((attempt) => (
+                    <li key={attempt.id}>
+                      <div>
+                        <strong>{humanizeTopic(attempt.topic)}</strong>
+                        <p className="muted">{attempt.prompt}</p>
+                        {attempt.userAnswer ? <p className="muted">Solved values: {attempt.userAnswer}</p> : null}
                       </div>
                       <div>
                         <span className={attempt.isCorrect ? "result-good" : "result-bad"}>

@@ -46,9 +46,21 @@ describe("summarizePracticeData", () => {
       }
     ];
 
-    const summary = summarizePracticeData({ graphAttempts, trigAttempts, recentLimit: 4 });
+    const lgsAttempts = [
+      {
+        id: 5,
+        matrixLabel: "3x3 linear system",
+        mode: "strategy",
+        solvedValues: "[1,2,3]",
+        isCorrect: true,
+        xpAwarded: 10,
+        createdAt: new Date("2026-02-10T14:00:00.000Z")
+      }
+    ];
 
-    expect(summary.totals).toEqual({ attempts: 4, correct: 2, wrong: 2, accuracy: 50 });
+    const summary = summarizePracticeData({ graphAttempts, trigAttempts, lgsAttempts, recentLimit: 5 });
+
+    expect(summary.totals).toEqual({ attempts: 5, correct: 3, wrong: 2, accuracy: 60 });
     expect(summary.challengeBreakdown.graphing).toEqual({
       attempts: 2,
       correct: 1,
@@ -61,14 +73,23 @@ describe("summarizePracticeData", () => {
       wrong: 1,
       accuracy: 50
     });
+    expect(summary.challengeBreakdown.lgs).toEqual({
+      attempts: 1,
+      correct: 1,
+      wrong: 0,
+      accuracy: 100
+    });
 
     expect(summary.attemptsByFamily).toEqual({ polynomial: 1, trigonometric: 1 });
     expect(summary.attemptsByTrigCategory).toEqual({ core_identities: 1, unit_circle_angles: 1 });
+    expect(summary.attemptsByLgsMode).toEqual({ strategy: 1 });
 
-    expect(summary.recentAttempts).toHaveLength(4);
-    expect(summary.recentAttempts[0]?.id).toBe("trig-4");
-    expect(summary.recentAttempts[0]?.challengeType).toBe("trigonometry");
-    expect(summary.recentAttempts[0]?.userAnswer).toBe("0.4");
-    expect(summary.recentAttempts[3]?.id).toBe("graph-1");
+    expect(summary.recentAttempts).toHaveLength(5);
+    expect(summary.recentAttempts[0]?.id).toBe("lgs-5");
+    expect(summary.recentAttempts[0]?.challengeType).toBe("lgs");
+    expect(summary.recentAttempts[1]?.id).toBe("trig-4");
+    expect(summary.recentAttempts[1]?.challengeType).toBe("trigonometry");
+    expect(summary.recentAttempts[1]?.userAnswer).toBe("0.4");
+    expect(summary.recentAttempts[4]?.id).toBe("graph-1");
   });
 });

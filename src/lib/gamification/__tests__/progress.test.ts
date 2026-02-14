@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   allBadgesForStats,
   badgesForStats,
+  lgsBadgesForStats,
   levelFromXp,
   trigBadgesForStats,
   xpForAttempt,
@@ -74,9 +75,33 @@ describe("gamification", () => {
         attempts: 1,
         correct: 1,
         categoriesAttempted: ["core_identities"]
+      },
+      lgs: {
+        attempts: 1,
+        correct: 1,
+        modesAttempted: ["strategy"]
       }
     });
 
-    expect(badges).toEqual(expect.arrayContaining(["FIRST_TRY", "TRIG_FIRST_TRY"]));
+    expect(badges).toEqual(
+      expect.arrayContaining(["FIRST_TRY", "TRIG_FIRST_TRY", "LGS_FIRST_TRY"])
+    );
+  });
+
+  it("unlocks lgs badge sets correctly", () => {
+    const badges = lgsBadgesForStats({
+      attempts: 20,
+      correct: 16,
+      modesAttempted: ["strategy", "hardcore"]
+    });
+
+    expect(badges).toEqual(
+      expect.arrayContaining([
+        "LGS_FIRST_TRY",
+        "LGS_TEN_ATTEMPTS",
+        "LGS_ACCURACY_75",
+        "LGS_MODE_EXPLORER"
+      ])
+    );
   });
 });
