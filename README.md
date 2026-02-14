@@ -1,6 +1,6 @@
 # GraphQuest Math Teaching App
 
-Lightweight Next.js + Prisma app for graph sketching practice.
+Lightweight Next.js + Prisma app for graph sketching practice and trigonometry recall.
 
 ## Features
 
@@ -10,6 +10,11 @@ Lightweight Next.js + Prisma app for graph sketching practice.
   - Trigonometric
   - Exponential
   - Rational
+- Trigonometry flashcard challenge with bilingual EN/DE prompts for:
+  - unit-circle values
+  - identities and angle theorems
+  - inverse trig ranges
+  - applied sinusoid forms
 - Paper-sketch workflow:
   1. Read prompt
   2. Sketch on paper
@@ -54,6 +59,8 @@ npm run dev
 
 - `GET /api/challenge/next?family=all|polynomial|trigonometric|exponential|rational`
 - `POST /api/challenge/attempt`
+- `GET /api/challenge/trigonometry/next?categories=<csv>`
+- `POST /api/challenge/trigonometry/attempt`
 - `GET /api/profile/summary`
 
 ## Testing

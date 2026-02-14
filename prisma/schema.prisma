@@ -12,6 +12,7 @@ model Profile {
   displayName String        @default("Learner")
   totalXp     Int           @default(0)
   attempts    GraphAttempt[]
+  trigAttempts TrigFlashcardAttempt[]
   badgeUnlock BadgeUnlock[]
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
@@ -37,4 +38,21 @@ model BadgeUnlock {
   unlockedAt DateTime @default(now())
 
   @@unique([profileId, badgeCode])
+}
+
+model TrigFlashcardAttempt {
+  id         Int      @id @default(autoincrement())
+  profileId  Int
+  profile    Profile  @relation(fields: [profileId], references: [id])
+  challengeId String
+  cardId     String
+  category   String
+  promptEn   String
+  promptDe   String
+  answerEn   String
+  answerDe   String
+  userAnswer String
+  isCorrect  Boolean
+  xpAwarded  Int
+  createdAt  DateTime @default(now())
 }

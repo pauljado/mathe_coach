@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 
 import { BadgeGrid } from "@/components/BadgeGrid";
 
+type ChallengeType = "graphing" | "trigonometry";
+
 type ProfileSummary = {
   displayName: string;
   totals: {
@@ -12,6 +14,7 @@ type ProfileSummary = {
     wrong: number;
     accuracy: number;
   };
+  challengeBreakdown: Record<ChallengeType, { attempts: number; correct: number; wrong: number; accuracy: number }>;
   gamification: {
     xp: number;
     level: number;
@@ -19,20 +22,31 @@ type ProfileSummary = {
   };
   badges: Array<{ code: string; label: string; description: string; unlockedAt: string }>;
   attemptsByFamily: Record<string, number>;
+  attemptsByTrigCategory: Record<string, number>;
   recentAttempts: Array<{
-    id: number;
-    family: string;
-    functionText: string;
+    id: string;
+    challengeType: ChallengeType;
+    topic: string;
+    prompt: string;
+    promptSecondary: string | null;
+    userAnswer: string | null;
     isCorrect: boolean;
     xpAwarded: number;
     createdAt: string;
   }>;
 };
 
+function humanizeTopic(topic: string): string {
+  return topic
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 export default function ProfilePage() {
   const [summary, setSummary] = useState<ProfileSummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedChallenge, setSelectedChallenge] = useState("graphing");
+  const [selectedChallenge, setSelectedChallenge] = useState<ChallengeType>("graphing");
   const [showAttemptStats, setShowAttemptStats] = useState(false);
 
   async function loadSummary() {
@@ -59,6 +73,22 @@ export default function ProfilePage() {
     return ((summary.gamification.xp - currentThreshold) / segment) * 100;
   }, [summary]);
 
+  const selectedBreakdown = useMemo(() => {
+    if (!summary) {
+      return { attempts: 0, correct: 0, wrong: 0, accuracy: 0 };
+    }
+
+    return summary.challengeBreakdown[selectedChallenge];
+  }, [selectedChallenge, summary]);
+
+  const filteredRecentAttempts = useMemo(() => {
+    if (!summary) {
+      return [];
+    }
+
+    return summary.recentAttempts.filter((attempt) => attempt.challengeType === selectedChallenge);
+  }, [selectedChallenge, summary]);
+
   if (loading || !summary) {
     return (
       <section className="card loading-card">
@@ -72,7 +102,7 @@ export default function ProfilePage() {
     <section className="grid" style={{ gap: "1rem" }}>
       <div className="card profile-header">
         <h1>{summary.displayName}</h1>
-        <p className="muted">Track your graph sketching progress and achievements.</p>
+        <p className="muted">Track your graphing and trigonometry progress with shared XP.</p>
       </div>
 
       <div className="grid grid-3">
@@ -86,7 +116,7 @@ export default function ProfilePage() {
         </article>
 
         <article className="card stat-card">
-          <h2>Accuracy</h2>
+          <h2>Overall Accuracy</h2>
           <p className="stat-big">{summary.totals.accuracy}%</p>
           <p className="muted">
             {summary.totals.correct} correct / {summary.totals.attempts} attempts
@@ -94,7 +124,7 @@ export default function ProfilePage() {
         </article>
 
         <article className="card stat-card">
-          <h2>Attempts</h2>
+          <h2>Overall Attempts</h2>
           <p className="stat-big">{summary.totals.attempts}</p>
           <p className="muted">Wrong answers: {summary.totals.wrong}</p>
         </article>
@@ -112,10 +142,11 @@ export default function ProfilePage() {
             <span className="muted">Challenge</span>
             <select
               value={selectedChallenge}
-              onChange={(event) => setSelectedChallenge(event.target.value)}
+              onChange={(event) => setSelectedChallenge(event.target.value as ChallengeType)}
               aria-label="Select challenge for detailed stats"
             >
               <option value="graphing">Graphing challenge</option>
+              <option value="trigonometry">Trigonometry flashcards</option>
             </select>
           </label>
           <button
@@ -128,6 +159,14 @@ export default function ProfilePage() {
           </button>
         </div>
 
+        <div className="card split-summary-card">
+          <h2>{selectedChallenge === "graphing" ? "Graphing" : "Trigonometry"} Summary</h2>
+          <p className="muted">
+            Accuracy: {selectedBreakdown.accuracy}% ({selectedBreakdown.correct} correct / {selectedBreakdown.attempts} attempts)
+          </p>
+          <p className="muted">Wrong answers: {selectedBreakdown.wrong}</p>
+        </div>
+
         {selectedChallenge === "graphing" && showAttemptStats ? (
           <div className="grid grid-2">
             <article className="card family-card">
@@ -138,7 +177,7 @@ export default function ProfilePage() {
                 <ul className="plain-list">
                   {Object.entries(summary.attemptsByFamily).map(([family, count]) => (
                     <li key={family}>
-                      <span>{family}</span>
+                      <span>{humanizeTopic(family)}</span>
                       <strong>{count}</strong>
                     </li>
                   ))}
@@ -147,16 +186,62 @@ export default function ProfilePage() {
             </article>
 
             <article className="card family-card">
-              <h2>Recent Attempts</h2>
-              {summary.recentAttempts.length === 0 ? (
-                <p className="muted">Start your first challenge to populate this feed.</p>
+              <h2>Recent Graphing Attempts</h2>
+              {filteredRecentAttempts.length === 0 ? (
+                <p className="muted">Start your first graphing challenge to populate this feed.</p>
               ) : (
                 <ul className="plain-list attempts-list">
-                  {summary.recentAttempts.map((attempt) => (
+                  {filteredRecentAttempts.map((attempt) => (
                     <li key={attempt.id}>
                       <div>
-                        <strong>{attempt.family}</strong>
-                        <p className="muted">{attempt.functionText}</p>
+                        <strong>{humanizeTopic(attempt.topic)}</strong>
+                        <p className="muted">{attempt.prompt}</p>
+                      </div>
+                      <div>
+                        <span className={attempt.isCorrect ? "result-good" : "result-bad"}>
+                          {attempt.isCorrect ? "Correct" : "Wrong"}
+                        </span>
+                        <p className="muted">+{attempt.xpAwarded} XP</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </article>
+          </div>
+        ) : null}
+
+        {selectedChallenge === "trigonometry" && showAttemptStats ? (
+          <div className="grid grid-2">
+            <article className="card family-card">
+              <h2>Attempts by Category</h2>
+              {Object.keys(summary.attemptsByTrigCategory).length === 0 ? (
+                <p className="muted">No attempts yet.</p>
+              ) : (
+                <ul className="plain-list">
+                  {Object.entries(summary.attemptsByTrigCategory).map(([category, count]) => (
+                    <li key={category}>
+                      <span>{humanizeTopic(category)}</span>
+                      <strong>{count}</strong>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </article>
+
+            <article className="card family-card">
+              <h2>Recent Trigonometry Attempts</h2>
+              {filteredRecentAttempts.length === 0 ? (
+                <p className="muted">Start your first flashcard attempt to populate this feed.</p>
+              ) : (
+                <ul className="plain-list attempts-list">
+                  {filteredRecentAttempts.map((attempt) => (
+                    <li key={attempt.id}>
+                      <div>
+                        <strong>{humanizeTopic(attempt.topic)}</strong>
+                        <p className="muted">{attempt.prompt}</p>
+                        {attempt.promptSecondary ? <p className="muted">{attempt.promptSecondary}</p> : null}
+                        {attempt.userAnswer ? <p className="muted">Your answer: {attempt.userAnswer}</p> : null}
                       </div>
                       <div>
                         <span className={attempt.isCorrect ? "result-good" : "result-bad"}>

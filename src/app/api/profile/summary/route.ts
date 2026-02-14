@@ -3,19 +3,31 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { BADGE_DETAILS, levelFromXp, xpToNextLevel } from "@/lib/gamification/progress";
 import { getOrCreateProfile } from "@/lib/profile";
+import { summarizePracticeData } from "@/lib/profile/summary";
 
 export async function GET() {
   const profile = await getOrCreateProfile();
 
-  const [attempts, badges] = await Promise.all([
+  const [graphAttempts, trigAttempts, badges] = await Promise.all([
     prisma.graphAttempt.findMany({
       where: { profileId: profile.id },
-      orderBy: { createdAt: "desc" },
-      take: 15,
       select: {
         id: true,
         family: true,
         functionText: true,
+        isCorrect: true,
+        xpAwarded: true,
+        createdAt: true
+      }
+    }),
+    prisma.trigFlashcardAttempt.findMany({
+      where: { profileId: profile.id },
+      select: {
+        id: true,
+        category: true,
+        promptEn: true,
+        promptDe: true,
+        userAnswer: true,
         isCorrect: true,
         xpAwarded: true,
         createdAt: true
@@ -31,34 +43,16 @@ export async function GET() {
     })
   ]);
 
-  const attemptCount = await prisma.graphAttempt.count({ where: { profileId: profile.id } });
-  const correctCount = await prisma.graphAttempt.count({
-    where: { profileId: profile.id, isCorrect: true }
+  const summary = summarizePracticeData({
+    graphAttempts,
+    trigAttempts,
+    recentLimit: 15
   });
-
-  const attemptsByFamilyRows = await prisma.graphAttempt.groupBy({
-    by: ["family"],
-    where: { profileId: profile.id },
-    _count: {
-      _all: true
-    }
-  });
-
-  const attemptsByFamily = attemptsByFamilyRows.reduce<Record<string, number>>((acc, row) => {
-    acc[row.family] = row._count._all;
-    return acc;
-  }, {});
-
-  const accuracy = attemptCount === 0 ? 0 : Number(((correctCount / attemptCount) * 100).toFixed(1));
 
   return NextResponse.json({
     displayName: profile.displayName,
-    totals: {
-      attempts: attemptCount,
-      correct: correctCount,
-      wrong: Math.max(0, attemptCount - correctCount),
-      accuracy
-    },
+    totals: summary.totals,
+    challengeBreakdown: summary.challengeBreakdown,
     gamification: {
       xp: profile.totalXp,
       level: levelFromXp(profile.totalXp),
@@ -72,7 +66,8 @@ export async function GET() {
         description: "Unlocked achievement"
       })
     })),
-    attemptsByFamily,
-    recentAttempts: attempts
+    attemptsByFamily: summary.attemptsByFamily,
+    attemptsByTrigCategory: summary.attemptsByTrigCategory,
+    recentAttempts: summary.recentAttempts
   });
 }

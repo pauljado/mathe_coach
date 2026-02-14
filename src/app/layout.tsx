@@ -26,7 +26,8 @@ export default function RootLayout({
               GraphQuest
             </Link>
             <nav aria-label="Main navigation" className="main-nav">
-              <Link href="/challenge/graphing">Challenge</Link>
+              <Link href="/challenge/graphing">Graphing</Link>
+              <Link href="/challenge/trigonometry">Trigonometry</Link>
               <Link href="/profile">Profile</Link>
             </nav>
           </div>

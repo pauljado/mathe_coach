@@ -15,6 +15,9 @@ export default function HomePage() {
           <Link className="btn btn-primary" href="/challenge/graphing">
             Start Graphing Challenge
           </Link>
+          <Link className="btn btn-outline" href="/challenge/trigonometry">
+            Start Trigonometry Flashcards
+          </Link>
           <Link className="btn btn-outline" href="/profile">
             View Profile
           </Link>
@@ -31,9 +34,10 @@ export default function HomePage() {
             status="active"
           />
           <ChallengeCard
-            title="Equation Sprint"
-            description="Timed equation-solving drills with adaptive difficulty."
-            status="soon"
+            title="Trigonometry Flashcards"
+            description="Recall identities, exact values, and theorem forms in EN/DE flashcard mode."
+            href="/challenge/trigonometry"
+            status="active"
           />
           <ChallengeCard
             title="Word Problem Lab"

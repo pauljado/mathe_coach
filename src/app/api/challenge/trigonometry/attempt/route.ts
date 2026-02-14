@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { prisma } from "@/lib/prisma";
-import { getOrCreateProfile } from "@/lib/profile";
 import { BADGE_DETAILS, allBadgesForStats, levelFromXp, xpForAttempt } from "@/lib/gamification/progress";
+import { getOrCreateProfile } from "@/lib/profile";
+import { prisma } from "@/lib/prisma";
+import { getTrigCardById } from "@/lib/trigonometry/deck";
 import type { ConcreteFamily } from "@/types/challenge";
 import { trigCategories, type TrigCategory } from "@/types/trigonometry";
 
@@ -16,34 +17,39 @@ const VALID_TRIG_CATEGORIES = new Set<TrigCategory>(trigCategories);
 
 type AttemptBody = {
   challengeId?: string;
-  family?: string;
-  displayText?: string;
+  cardId?: string;
+  userAnswer?: string;
   isCorrect?: boolean;
 };
 
 export async function POST(request: Request) {
   const body = (await request.json()) as AttemptBody;
+  const userAnswer = body.userAnswer?.trim();
 
-  if (
-    !body.challengeId ||
-    !body.displayText ||
-    typeof body.isCorrect !== "boolean" ||
-    !body.family ||
-    !VALID_FAMILIES.has(body.family as ConcreteFamily)
-  ) {
+  if (!body.challengeId || !body.cardId || typeof body.isCorrect !== "boolean" || !userAnswer) {
     return NextResponse.json({ error: "Invalid attempt payload" }, { status: 400 });
+  }
+
+  const card = getTrigCardById(body.cardId);
+  if (!card) {
+    return NextResponse.json({ error: "Unknown card id" }, { status: 400 });
   }
 
   const profile = await getOrCreateProfile();
   const xpAwarded = xpForAttempt(body.isCorrect);
 
   await prisma.$transaction(async (tx) => {
-    await tx.graphAttempt.create({
+    await tx.trigFlashcardAttempt.create({
       data: {
         profileId: profile.id,
         challengeId: body.challengeId!,
-        family: body.family!,
-        functionText: body.displayText!,
+        cardId: body.cardId!,
+        category: card.category,
+        promptEn: card.promptEn,
+        promptDe: card.promptDe,
+        answerEn: card.answerEn,
+        answerDe: card.answerDe,
+        userAnswer,
         isCorrect: body.isCorrect!,
         xpAwarded
       }
@@ -102,7 +108,7 @@ export async function POST(request: Request) {
     where: { profileId: profile.id },
     select: { badgeCode: true }
   });
-  const existingSet = new Set(existingBadges.map((b) => b.badgeCode));
+  const existingSet = new Set(existingBadges.map((badge) => badge.badgeCode));
 
   const newBadges = nowBadges.filter((badge) => !existingSet.has(badge));
   if (newBadges.length > 0) {
