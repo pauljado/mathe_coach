@@ -856,7 +856,13 @@ select:focus-visible {
   gap: 0.35rem;
 }
 
+.lgs-factor-grid {
+  display: grid;
+  gap: 0.65rem;
+}
+
 .lgs-factor-input input,
+.lgs-factor-input select,
 .lgs-back-input input {
   width: min(220px, 100%);
   border-radius: 12px;
@@ -864,6 +870,11 @@ select:focus-visible {
   padding: 0.6rem 0.7rem;
   font: inherit;
   background: #fff;
+}
+
+.lgs-factor-grid .lgs-factor-input input,
+.lgs-factor-grid .lgs-factor-input select {
+  width: 100%;
 }
 
 .lgs-warning {
@@ -909,6 +920,35 @@ select:focus-visible {
   color: #0c6d4d;
   font-weight: 700;
   animation: lgs-fly-up 600ms ease;
+}
+
+.lgs-back-insert-btn {
+  transition: box-shadow 140ms ease, transform 140ms ease;
+}
+
+.lgs-back-insert-btn-error {
+  box-shadow: 0 0 0 3px rgba(194, 63, 87, 0.34);
+  background: #b9324f;
+  animation: lgs-insert-shake 380ms ease;
+}
+
+@keyframes lgs-insert-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-4px);
+  }
+  40% {
+    transform: translateX(4px);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
 }
 
 @keyframes lgs-fly-up {
@@ -961,6 +1001,10 @@ select:focus-visible {
 @media (min-width: 760px) {
   .lgs-layout {
     grid-template-columns: minmax(0, 1fr) 320px;
+  }
+
+  .lgs-factor-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .answer-compare-grid {

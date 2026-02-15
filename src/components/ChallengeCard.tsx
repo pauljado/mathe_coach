@@ -13,12 +13,12 @@ export function ChallengeCard({ title, description, href, status }: ChallengeCar
       <div className="challenge-header">
         <h3>{title}</h3>
         <span className={`pill ${status === "active" ? "pill-active" : "pill-soon"}`}>
-          {status === "active" ? "Ready" : "Coming soon"}
+          {status === "active" ? "Bereit" : "Demnaechst"}
         </span>
       </div>
       <p className="muted">{description}</p>
       <div className="challenge-footer">
-        {status === "active" ? <span className="btn btn-primary">Start Challenge</span> : <span className="btn btn-outline">Planned</span>}
+        {status === "active" ? <span className="btn btn-primary">Aufgabe starten</span> : <span className="btn btn-outline">Geplant</span>}
       </div>
     </article>
   );

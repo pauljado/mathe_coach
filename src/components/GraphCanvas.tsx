@@ -80,7 +80,7 @@ export function GraphCanvas({ points, xRange, yRange }: GraphCanvasProps) {
       <svg
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         role="img"
-        aria-label="Revealed function graph"
+        aria-label="Aufgedeckter Funktionsgraph"
         className="graph-svg"
       >
         <rect x="0" y="0" width={WIDTH} height={HEIGHT} fill="#f8fbff" />

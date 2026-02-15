@@ -14,9 +14,9 @@ type AttemptResponse = {
 };
 
 const familyLabels: Record<FunctionFamily, string> = {
-  all: "All families",
-  polynomial: "Polynomial",
-  trigonometric: "Trigonometric",
+  all: "Alle Familien",
+  polynomial: "Polynom",
+  trigonometric: "Trigonometrisch",
   exponential: "Exponential",
   rational: "Rational"
 };
@@ -26,7 +26,7 @@ export default function GraphingChallengePage() {
   const [challenge, setChallenge] = useState<ChallengePayload | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState<string>("Loading challenge...");
+  const [status, setStatus] = useState<string>("Lade Aufgabe...");
   const [latestReward, setLatestReward] = useState<AttemptResponse | null>(null);
 
   const familyOptions = useMemo(() => functionFamilies, []);
@@ -34,7 +34,7 @@ export default function GraphingChallengePage() {
   async function loadNextChallenge(chosenFamily: FunctionFamily) {
     setLoading(true);
     setRevealed(false);
-    setStatus("Loading challenge...");
+    setStatus("Lade Aufgabe...");
 
     const response = await fetch(`/api/challenge/next?family=${chosenFamily}`, {
       method: "GET"
@@ -43,7 +43,7 @@ export default function GraphingChallengePage() {
 
     setChallenge(payload);
     setLoading(false);
-    setStatus(`New ${payload.family} challenge ready. Sketch on paper first.`);
+    setStatus(`Neue ${payload.family}-Aufgabe bereit. Erst loesen, dann aufdecken.`);
   }
 
   useEffect(() => {
@@ -73,21 +73,21 @@ export default function GraphingChallengePage() {
     setLatestReward(result);
 
     await loadNextChallenge(family);
-    setStatus(isCorrect ? "Marked correct. Next challenge loaded." : "Marked wrong. Next challenge loaded.");
+    setStatus(isCorrect ? "Als korrekt markiert. Naechste Aufgabe geladen." : "Als falsch markiert. Naechste Aufgabe geladen.");
   }
 
   return (
     <section className="grid" style={{ gap: "1rem" }}>
       <div className="card challenge-shell">
         <div className="challenge-top-row">
-          <h1>Graphing Challenge</h1>
+          <h1>Graphen-Aufgabe</h1>
           <label>
-            <span className="muted">Function family</span>
+            <span className="muted">Funktionsfamilie</span>
             <br />
             <select
               value={family}
               onChange={(event) => setFamily(event.target.value as FunctionFamily)}
-              aria-label="Select function family"
+              aria-label="Funktionsfamilie waehlen"
             >
               {familyOptions.map((item) => (
                 <option key={item} value={item}>
@@ -99,11 +99,11 @@ export default function GraphingChallengePage() {
         </div>
 
         <p className="muted">
-          Prompt: sketch the function on paper before revealing the graph.
+          Aufgabe: Skizziere die Funktion zuerst auf Papier und decke danach den Graphen auf.
         </p>
 
         {challenge ? (
-          <div className="function-display" aria-label={`Current function ${challenge.displayText}`}>
+          <div className="function-display" aria-label={`Aktuelle Funktion ${challenge.displayText}`}>
             <BlockMath math={challenge.promptLatex} />
           </div>
         ) : null}
@@ -115,7 +115,7 @@ export default function GraphingChallengePage() {
             onClick={() => setRevealed(true)}
             disabled={loading || !challenge || revealed}
           >
-            I completed my sketch
+            Skizze fertig
           </button>
         </div>
 
@@ -129,7 +129,7 @@ export default function GraphingChallengePage() {
                 onClick={() => void submitResult(true)}
                 disabled={loading}
               >
-                Marked Correct
+                Korrekt
               </button>
               <button
                 type="button"
@@ -137,7 +137,7 @@ export default function GraphingChallengePage() {
                 onClick={() => void submitResult(false)}
                 disabled={loading}
               >
-                Marked Wrong
+                Falsch
               </button>
             </div>
           </>
@@ -147,11 +147,11 @@ export default function GraphingChallengePage() {
       {latestReward ? (
         <div className="card reward-card" aria-live="polite">
           <p>
-            +{latestReward.xpAwarded} XP earned. Level {latestReward.newLevel}, total {latestReward.newTotalXp} XP.
+            +{latestReward.xpAwarded} XP erhalten. Level {latestReward.newLevel}, insgesamt {latestReward.newTotalXp} XP.
           </p>
           {latestReward.newBadges.length > 0 ? (
             <p>
-              New badges: {latestReward.newBadges.map((badge) => badge.label).join(", ")}
+              Neue Badges: {latestReward.newBadges.map((badge) => badge.label).join(", ")}
             </p>
           ) : null}
         </div>

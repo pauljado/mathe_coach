@@ -18,52 +18,52 @@ export type BadgeCode =
 
 export const BADGE_DETAILS: Record<BadgeCode, { label: string; description: string }> = {
   FIRST_TRY: {
-    label: "First Try",
-    description: "Complete your first sketch challenge."
+    label: "Erster Versuch",
+    description: "Schliesse deine erste Graphen-Aufgabe ab."
   },
   TEN_ATTEMPTS: {
-    label: "Ten Attempts",
-    description: "Log 10 total graphing attempts."
+    label: "Zehn Versuche",
+    description: "Absolviere 10 Graphen-Versuche."
   },
   ACCURACY_70: {
-    label: "Steady Accuracy",
-    description: "Reach at least 70% accuracy after 20 attempts."
+    label: "Stabile Genauigkeit",
+    description: "Erreiche mindestens 70% Genauigkeit nach 20 Versuchen."
   },
   FAMILY_EXPLORER: {
-    label: "Family Explorer",
-    description: "Try at least one graph in every function family."
+    label: "Familien-Explorer",
+    description: "Teste mindestens einen Graphen in jeder Funktionsfamilie."
   },
   TRIG_FIRST_TRY: {
-    label: "Trig First Try",
-    description: "Complete your first trigonometry flashcard."
+    label: "Trig-Erstversuch",
+    description: "Schliesse deine erste Trigonometrie-Karte ab."
   },
   TRIG_TEN_ATTEMPTS: {
-    label: "Trig Ten Attempts",
-    description: "Log 10 total trigonometry flashcard attempts."
+    label: "Trig-Zehn",
+    description: "Absolviere 10 Trigonometrie-Karten."
   },
   TRIG_ACCURACY_75: {
-    label: "Trig Accuracy",
-    description: "Reach at least 75% trigonometry accuracy after 20 attempts."
+    label: "Trig-Genauigkeit",
+    description: "Erreiche mindestens 75% Trigonometrie-Genauigkeit nach 20 Versuchen."
   },
   TRIG_CATEGORY_EXPLORER: {
-    label: "Trig Category Explorer",
-    description: "Try at least one card in every trigonometry category."
+    label: "Trig-Kategorien-Explorer",
+    description: "Teste mindestens eine Karte in jeder Trigonometrie-Kategorie."
   },
   LGS_FIRST_TRY: {
-    label: "Zero Hunter",
-    description: "Complete your first Gaussian elimination challenge."
+    label: "Nullenjaeger",
+    description: "Schliesse deine erste Gauß-Aufgabe ab."
   },
   LGS_TEN_ATTEMPTS: {
-    label: "Row Operator",
-    description: "Log 10 total Gaussian elimination challenges."
+    label: "Zeilenoperator",
+    description: "Absolviere 10 Gauß-Aufgaben."
   },
   LGS_ACCURACY_75: {
-    label: "Echelon Accuracy",
-    description: "Reach at least 75% LGS accuracy after 20 attempts."
+    label: "Stufenform-Profi",
+    description: "Erreiche mindestens 75% LGS-Genauigkeit nach 20 Versuchen."
   },
   LGS_MODE_EXPLORER: {
-    label: "Mode Explorer",
-    description: "Complete at least one LGS challenge in strategy and hardcore mode."
+    label: "Modus-Explorer",
+    description: "Schliesse mindestens je eine LGS-Aufgabe in Strategie und Selbst-rechnen ab."
   }
 };
 

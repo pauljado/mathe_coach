@@ -46,7 +46,7 @@ function BadgeIcon({ code }: { code: string }) {
 
 export function BadgeGrid({ badges }: BadgeGridProps) {
   if (badges.length === 0) {
-    return <p className="muted">No badges unlocked yet. Complete challenges to earn your first one.</p>;
+    return <p className="muted">Noch keine Badges freigeschaltet. Loese Aufgaben fuer dein erstes Badge.</p>;
   }
 
   return (
@@ -60,7 +60,7 @@ export function BadgeGrid({ badges }: BadgeGridProps) {
             <h3>{badge.label}</h3>
           </div>
           <p>{badge.description}</p>
-          <p className="badge-meta">Unlocked {new Date(badge.unlockedAt).toLocaleDateString()}</p>
+          <p className="badge-meta">Freigeschaltet am {new Date(badge.unlockedAt).toLocaleDateString()}</p>
         </article>
       ))}
     </div>

@@ -38,6 +38,26 @@ type ProfileSummary = {
 };
 
 function humanizeTopic(topic: string): string {
+  const map: Record<string, string> = {
+    polynomial: "Polynom",
+    trigonometric: "Trigonometrisch",
+    exponential: "Exponential",
+    rational: "Rational",
+    strategy: "Strategie",
+    hardcore: "Selbst rechnen",
+    unit_circle_angles: "Einheitskreis-Winkel",
+    core_identities: "Grundidentitaeten",
+    angle_sum_difference: "Summen- und Differenzwinkel",
+    double_half_angle: "Doppel- und Halbwinkel",
+    product_sum_transforms: "Produkt-Summen-Umformungen",
+    inverse_trig_ranges: "Wertebereiche inverser Funktionen",
+    applied_forms: "Anwendungsformen"
+  };
+
+  if (map[topic]) {
+    return map[topic];
+  }
+
   return topic
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
@@ -93,8 +113,8 @@ export default function ProfilePage() {
   if (loading || !summary) {
     return (
       <section className="card loading-card">
-        <h1>Profile</h1>
-        <p>Loading progress...</p>
+        <h1>Profil</h1>
+        <p>Fortschritt wird geladen...</p>
       </section>
     );
   }
@@ -103,52 +123,52 @@ export default function ProfilePage() {
     <section className="grid" style={{ gap: "1rem" }}>
       <div className="card profile-header">
         <h1>{summary.displayName}</h1>
-        <p className="muted">Track your graphing, trigonometry, and LGS progress with shared XP.</p>
+        <p className="muted">Verfolge deinen Fortschritt in Graphen, Trigonometrie und LGS mit gemeinsamem XP.</p>
       </div>
 
       <div className="grid grid-3">
         <article className="card stat-card">
           <h2>Level {summary.gamification.level}</h2>
-          <p>{summary.gamification.xp} XP total</p>
-          <div className="meter" aria-label="XP progress to next level">
+          <p>{summary.gamification.xp} XP insgesamt</p>
+          <div className="meter" aria-label="XP-Fortschritt bis zum naechsten Level">
             <div className="meter-fill" style={{ width: `${Math.min(100, Math.max(0, xpProgress))}%` }} />
           </div>
-          <p className="muted">{summary.gamification.xpToNext} XP to next level</p>
+          <p className="muted">{summary.gamification.xpToNext} XP bis zum naechsten Level</p>
         </article>
 
         <article className="card stat-card">
-          <h2>Overall Accuracy</h2>
+          <h2>Gesamtgenauigkeit</h2>
           <p className="stat-big">{summary.totals.accuracy}%</p>
           <p className="muted">
-            {summary.totals.correct} correct / {summary.totals.attempts} attempts
+            {summary.totals.correct} korrekt / {summary.totals.attempts} Versuche
           </p>
         </article>
 
         <article className="card stat-card">
-          <h2>Overall Attempts</h2>
+          <h2>Gesamtversuche</h2>
           <p className="stat-big">{summary.totals.attempts}</p>
-          <p className="muted">Wrong answers: {summary.totals.wrong}</p>
+          <p className="muted">Falsche Antworten: {summary.totals.wrong}</p>
         </article>
       </div>
 
       <div className="card badges-section">
-        <h2>Badges</h2>
+        <h2>Abzeichen</h2>
         <BadgeGrid badges={summary.badges} />
       </div>
 
       <details className="card further-stats">
-        <summary>Further stats</summary>
+        <summary>Weitere Statistiken</summary>
         <div className="further-controls">
           <label>
-            <span className="muted">Challenge</span>
+            <span className="muted">Bereich</span>
             <select
               value={selectedChallenge}
               onChange={(event) => setSelectedChallenge(event.target.value as ChallengeType)}
-              aria-label="Select challenge for detailed stats"
+              aria-label="Bereich fuer Detailstatistik waehlen"
             >
-              <option value="graphing">Graphing challenge</option>
-              <option value="trigonometry">Trigonometry flashcards</option>
-              <option value="lgs">Gaussian elimination</option>
+              <option value="graphing">Graphen-Aufgabe</option>
+              <option value="trigonometry">Trigonometrie-Karteikarten</option>
+              <option value="lgs">Gauss-Verfahren</option>
             </select>
           </label>
           <button
@@ -157,30 +177,30 @@ export default function ProfilePage() {
             onClick={() => setShowAttemptStats((current) => !current)}
             aria-expanded={showAttemptStats}
           >
-            {showAttemptStats ? "Hide attempt boxes" : "Show attempt boxes"}
+            {showAttemptStats ? "Detailboxen ausblenden" : "Detailboxen einblenden"}
           </button>
         </div>
 
         <div className="card split-summary-card">
           <h2>
             {selectedChallenge === "graphing"
-              ? "Graphing"
+              ? "Graphen"
               : selectedChallenge === "trigonometry"
-                ? "Trigonometry"
-                : "Gaussian Elimination"} Summary
+                ? "Trigonometrie"
+                : "Gauss-Verfahren"} Uebersicht
           </h2>
           <p className="muted">
-            Accuracy: {selectedBreakdown.accuracy}% ({selectedBreakdown.correct} correct / {selectedBreakdown.attempts} attempts)
+            Genauigkeit: {selectedBreakdown.accuracy}% ({selectedBreakdown.correct} korrekt / {selectedBreakdown.attempts} Versuche)
           </p>
-          <p className="muted">Wrong answers: {selectedBreakdown.wrong}</p>
+          <p className="muted">Falsche Antworten: {selectedBreakdown.wrong}</p>
         </div>
 
         {selectedChallenge === "graphing" && showAttemptStats ? (
           <div className="grid grid-2">
             <article className="card family-card">
-              <h2>Attempts by Family</h2>
+              <h2>Versuche nach Familie</h2>
               {Object.keys(summary.attemptsByFamily).length === 0 ? (
-                <p className="muted">No attempts yet.</p>
+                <p className="muted">Noch keine Versuche.</p>
               ) : (
                 <ul className="plain-list">
                   {Object.entries(summary.attemptsByFamily).map(([family, count]) => (
@@ -194,9 +214,9 @@ export default function ProfilePage() {
             </article>
 
             <article className="card family-card">
-              <h2>Recent Graphing Attempts</h2>
+              <h2>Letzte Graphen-Versuche</h2>
               {filteredRecentAttempts.length === 0 ? (
-                <p className="muted">Start your first graphing challenge to populate this feed.</p>
+                <p className="muted">Starte deine erste Graphen-Aufgabe, um diese Liste zu fuellen.</p>
               ) : (
                 <ul className="plain-list attempts-list">
                   {filteredRecentAttempts.map((attempt) => (
@@ -207,7 +227,7 @@ export default function ProfilePage() {
                       </div>
                       <div>
                         <span className={attempt.isCorrect ? "result-good" : "result-bad"}>
-                          {attempt.isCorrect ? "Correct" : "Wrong"}
+                          {attempt.isCorrect ? "Korrekt" : "Falsch"}
                         </span>
                         <p className="muted">+{attempt.xpAwarded} XP</p>
                       </div>
@@ -222,9 +242,9 @@ export default function ProfilePage() {
         {selectedChallenge === "trigonometry" && showAttemptStats ? (
           <div className="grid grid-2">
             <article className="card family-card">
-              <h2>Attempts by Category</h2>
+              <h2>Versuche nach Kategorie</h2>
               {Object.keys(summary.attemptsByTrigCategory).length === 0 ? (
-                <p className="muted">No attempts yet.</p>
+                <p className="muted">Noch keine Versuche.</p>
               ) : (
                 <ul className="plain-list">
                   {Object.entries(summary.attemptsByTrigCategory).map(([category, count]) => (
@@ -238,9 +258,9 @@ export default function ProfilePage() {
             </article>
 
             <article className="card family-card">
-              <h2>Recent Trigonometry Attempts</h2>
+              <h2>Letzte Trigonometrie-Versuche</h2>
               {filteredRecentAttempts.length === 0 ? (
-                <p className="muted">Start your first flashcard attempt to populate this feed.</p>
+                <p className="muted">Starte deinen ersten Kartenversuch, um diese Liste zu fuellen.</p>
               ) : (
                 <ul className="plain-list attempts-list">
                   {filteredRecentAttempts.map((attempt) => (
@@ -248,12 +268,11 @@ export default function ProfilePage() {
                       <div>
                         <strong>{humanizeTopic(attempt.topic)}</strong>
                         <p className="muted">{attempt.prompt}</p>
-                        {attempt.promptSecondary ? <p className="muted">{attempt.promptSecondary}</p> : null}
-                        {attempt.userAnswer ? <p className="muted">Your answer: {attempt.userAnswer}</p> : null}
+                        {attempt.userAnswer ? <p className="muted">Deine Antwort: {attempt.userAnswer}</p> : null}
                       </div>
                       <div>
                         <span className={attempt.isCorrect ? "result-good" : "result-bad"}>
-                          {attempt.isCorrect ? "Correct" : "Wrong"}
+                          {attempt.isCorrect ? "Korrekt" : "Falsch"}
                         </span>
                         <p className="muted">+{attempt.xpAwarded} XP</p>
                       </div>
@@ -268,9 +287,9 @@ export default function ProfilePage() {
         {selectedChallenge === "lgs" && showAttemptStats ? (
           <div className="grid grid-2">
             <article className="card family-card">
-              <h2>Attempts by Mode</h2>
+              <h2>Versuche nach Modus</h2>
               {Object.keys(summary.attemptsByLgsMode).length === 0 ? (
-                <p className="muted">No attempts yet.</p>
+                <p className="muted">Noch keine Versuche.</p>
               ) : (
                 <ul className="plain-list">
                   {Object.entries(summary.attemptsByLgsMode).map(([mode, count]) => (
@@ -284,9 +303,9 @@ export default function ProfilePage() {
             </article>
 
             <article className="card family-card">
-              <h2>Recent LGS Attempts</h2>
+              <h2>Letzte LGS-Versuche</h2>
               {filteredRecentAttempts.length === 0 ? (
-                <p className="muted">Start your first LGS challenge to populate this feed.</p>
+                <p className="muted">Starte deine erste LGS-Aufgabe, um diese Liste zu fuellen.</p>
               ) : (
                 <ul className="plain-list attempts-list">
                   {filteredRecentAttempts.map((attempt) => (
@@ -294,11 +313,11 @@ export default function ProfilePage() {
                       <div>
                         <strong>{humanizeTopic(attempt.topic)}</strong>
                         <p className="muted">{attempt.prompt}</p>
-                        {attempt.userAnswer ? <p className="muted">Solved values: {attempt.userAnswer}</p> : null}
+                        {attempt.userAnswer ? <p className="muted">Geloeste Werte: {attempt.userAnswer}</p> : null}
                       </div>
                       <div>
                         <span className={attempt.isCorrect ? "result-good" : "result-bad"}>
-                          {attempt.isCorrect ? "Correct" : "Wrong"}
+                          {attempt.isCorrect ? "Korrekt" : "Falsch"}
                         </span>
                         <p className="muted">+{attempt.xpAwarded} XP</p>
                       </div>

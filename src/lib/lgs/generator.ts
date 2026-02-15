@@ -139,7 +139,7 @@ export function createLgsChallenge(requestedSize?: LgsSize): LgsChallengePayload
     challengeId: randomUUID(),
     size,
     variableNames: VARIABLE_POOL.slice(0, size),
-    matrixLabel: `${size}x${size} linear system`,
+    matrixLabel: `${size}x${size} lineares Gleichungssystem`,
     initialMatrix: matrix,
     targetZeroMask: buildTargetZeroMask(size),
     solution

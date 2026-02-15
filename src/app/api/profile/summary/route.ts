@@ -76,7 +76,7 @@ export async function GET() {
       unlockedAt: badge.unlockedAt,
       ...(BADGE_DETAILS[badge.badgeCode as keyof typeof BADGE_DETAILS] ?? {
         label: badge.badgeCode,
-        description: "Unlocked achievement"
+        description: "Freigeschalteter Erfolg"
       })
     })),
     attemptsByFamily: summary.attemptsByFamily,

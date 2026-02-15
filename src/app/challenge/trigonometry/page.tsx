@@ -17,13 +17,13 @@ type AttemptResponse = {
 };
 
 const categoryLabels: Record<TrigCategory, string> = {
-  unit_circle_angles: "Unit Circle Angles",
-  core_identities: "Core Identities",
-  angle_sum_difference: "Angle Sum/Difference",
-  double_half_angle: "Double/Half Angle",
-  product_sum_transforms: "Product-Sum Transforms",
-  inverse_trig_ranges: "Inverse Trig Ranges",
-  applied_forms: "Applied Forms"
+  unit_circle_angles: "Einheitskreis-Winkel",
+  core_identities: "Grundidentitaeten",
+  angle_sum_difference: "Summen- und Differenzwinkel",
+  double_half_angle: "Doppel- und Halbwinkel",
+  product_sum_transforms: "Produkt-Summen-Umformungen",
+  inverse_trig_ranges: "Wertebereiche inverser Funktionen",
+  applied_forms: "Anwendungsformen"
 };
 
 export default function TrigonometryChallengePage() {
@@ -32,7 +32,7 @@ export default function TrigonometryChallengePage() {
   const [answerInput, setAnswerInput] = useState("");
   const [revealed, setRevealed] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState<string>("Loading flashcard...");
+  const [status, setStatus] = useState<string>("Lade Karte...");
   const [latestReward, setLatestReward] = useState<AttemptResponse | null>(null);
 
   const categoryOptions = useMemo(() => trigCategories, []);
@@ -41,7 +41,7 @@ export default function TrigonometryChallengePage() {
     setLoading(true);
     setRevealed(false);
     setAnswerInput("");
-    setStatus("Loading flashcard...");
+    setStatus("Lade Karte...");
 
     const categoryQuery = encodeURIComponent(categories.join(","));
     const response = await fetch(`/api/challenge/trigonometry/next?categories=${categoryQuery}`, {
@@ -51,7 +51,7 @@ export default function TrigonometryChallengePage() {
 
     setChallenge(payload);
     setLoading(false);
-    setStatus(`New ${categoryLabels[payload.category]} card ready.`);
+    setStatus(`Neue Karte aus ${categoryLabels[payload.category]} bereit.`);
   }
 
   useEffect(() => {
@@ -97,22 +97,22 @@ export default function TrigonometryChallengePage() {
     setLatestReward(result);
 
     await loadNextChallenge(selectedCategories);
-    setStatus(isCorrect ? "Marked correct. Next flashcard loaded." : "Marked wrong. Next flashcard loaded.");
+    setStatus(isCorrect ? "Als korrekt markiert. Naechste Karte geladen." : "Als falsch markiert. Naechste Karte geladen.");
   }
 
   return (
     <section className="grid" style={{ gap: "1rem" }}>
       <div className="card challenge-shell trig-shell">
         <div className="challenge-top-row">
-          <h1>Trigonometry Flashcards</h1>
-          <p className="muted">EN/DE active recall</p>
+          <h1>Trigonometrie-Karteikarten</h1>
+          <p className="muted">Aktives Erinnern</p>
         </div>
 
         <p className="muted">
-          Type your answer first, flip the card, compare with the canonical identity/value, then self-mark.
+          Gib zuerst deine Antwort ein, decke dann um und vergleiche mit der Musterloesung.
         </p>
 
-        <div className="category-chip-wrap" role="group" aria-label="Select trigonometry categories">
+        <div className="category-chip-wrap" role="group" aria-label="Trigonometrie-Kategorien waehlen">
           {categoryOptions.map((category) => {
             const selected = selectedCategories.includes(category);
             return (
@@ -136,21 +136,20 @@ export default function TrigonometryChallengePage() {
               {challenge ? (
                 <>
                   <h2>{categoryLabels[challenge.category]}</h2>
-                  <p className="muted">{challenge.promptEn}</p>
                   <p className="muted">{challenge.promptDe}</p>
-                  <div className="function-display" aria-label={`Card prompt ${challenge.promptEn}`}>
+                  <div className="function-display" aria-label={`Kartentext ${challenge.promptDe}`}>
                     <BlockMath math={challenge.promptLatex} />
                   </div>
                 </>
               ) : null}
 
               <label className="answer-field" htmlFor="trig-answer-input">
-                <span>Your answer / Deine Antwort</span>
+                <span>Deine Antwort</span>
                 <textarea
                   id="trig-answer-input"
                   value={answerInput}
                   onChange={(event) => setAnswerInput(event.target.value)}
-                  placeholder="Type formula, identity, value, or explanation"
+                  placeholder="Formel, Identitaet, Wert oder kurze Erklaerung eingeben"
                   rows={4}
                   disabled={loading || revealed}
                 />
@@ -163,7 +162,7 @@ export default function TrigonometryChallengePage() {
                   onClick={() => setRevealed(true)}
                   disabled={loading || !challenge || !answerInput.trim() || revealed}
                 >
-                  Flip Card
+                  Karte umdrehen
                 </button>
               </div>
             </article>
@@ -171,15 +170,14 @@ export default function TrigonometryChallengePage() {
             <article className="flashcard-face flashcard-back" aria-hidden={!revealed}>
               {challenge ? (
                 <>
-                  <h2>Compare Answers</h2>
+                  <h2>Antwort vergleichen</h2>
                   <div className="answer-compare-grid">
                     <div className="answer-panel">
-                      <h3>Your answer</h3>
+                      <h3>Deine Antwort</h3>
                       <p>{answerInput}</p>
                     </div>
                     <div className="answer-panel answer-panel-solution">
-                      <h3>Canonical solution</h3>
-                      <p className="muted">{challenge.answerEn}</p>
+                      <h3>Musterloesung</h3>
                       <p className="muted">{challenge.answerDe}</p>
                       <div className="function-display">
                         <BlockMath math={challenge.answerLatex} />
@@ -200,7 +198,7 @@ export default function TrigonometryChallengePage() {
               onClick={() => void submitResult(true)}
               disabled={loading}
             >
-              Marked Correct
+              Korrekt
             </button>
             <button
               type="button"
@@ -208,7 +206,7 @@ export default function TrigonometryChallengePage() {
               onClick={() => void submitResult(false)}
               disabled={loading}
             >
-              Marked Wrong
+              Falsch
             </button>
           </div>
         ) : null}
@@ -217,10 +215,10 @@ export default function TrigonometryChallengePage() {
       {latestReward ? (
         <div className="card reward-card" aria-live="polite">
           <p>
-            +{latestReward.xpAwarded} XP earned. Level {latestReward.newLevel}, total {latestReward.newTotalXp} XP.
+            +{latestReward.xpAwarded} XP erhalten. Level {latestReward.newLevel}, insgesamt {latestReward.newTotalXp} XP.
           </p>
           {latestReward.newBadges.length > 0 ? (
-            <p>New badges: {latestReward.newBadges.map((badge) => badge.label).join(", ")}</p>
+            <p>Neue Badges: {latestReward.newBadges.map((badge) => badge.label).join(", ")}</p>
           ) : null}
         </div>
       ) : null}

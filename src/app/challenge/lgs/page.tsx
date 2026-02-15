@@ -18,6 +18,9 @@ type HistoryEntry = {
   matrix: AugmentedMatrix;
 };
 
+type PendingPair = { source: number; target: number };
+type LgsOperationType = "combine" | "swap";
+
 const EPSILON = 1e-6;
 
 function isNearZero(value: number): boolean {
@@ -43,10 +46,22 @@ function formatNumber(value: number): string {
   return String(Number(normalized.toFixed(3)));
 }
 
-function parseNumericInput(raw: string): number | null {
+function parseRationalInput(raw: string): number | null {
   const normalized = raw.trim().replace(",", ".");
   if (!normalized) {
     return null;
+  }
+
+  const fractionMatch = normalized.match(
+    /^([+-]?\d+(?:\.\d+)?)\s*\/\s*([+-]?\d+(?:\.\d+)?)$/
+  );
+  if (fractionMatch) {
+    const numerator = Number(fractionMatch[1]);
+    const denominator = Number(fractionMatch[2]);
+    if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || Math.abs(denominator) < EPSILON) {
+      return null;
+    }
+    return numerator / denominator;
   }
 
   const parsed = Number(normalized);
@@ -112,18 +127,29 @@ function activePivotIndex(matrix: AugmentedMatrix, mask: boolean[][]): number | 
   return null;
 }
 
-function applyRowReplacement(
+function applyCombineOperation(
   matrix: AugmentedMatrix,
   sourceRowIndex: number,
   targetRowIndex: number,
-  factor: number
+  sourceScale: number,
+  targetScale: number,
+  combineFactor: number
 ): AugmentedMatrix {
   const nextMatrix = deepCopy(matrix);
   const sourceRow = matrix[sourceRowIndex]!;
   const targetRow = matrix[targetRowIndex]!;
   nextMatrix[targetRowIndex] = targetRow.map((value, colIndex) =>
-    Number((value + factor * sourceRow[colIndex]!).toFixed(6))
+    Number((targetScale * value + combineFactor * (sourceScale * sourceRow[colIndex]!)).toFixed(6))
   );
+  return nextMatrix;
+}
+
+function applySwapOperation(matrix: AugmentedMatrix, sourceRowIndex: number, targetRowIndex: number): AugmentedMatrix {
+  const nextMatrix = deepCopy(matrix);
+  [nextMatrix[sourceRowIndex], nextMatrix[targetRowIndex]] = [
+    nextMatrix[targetRowIndex]!,
+    nextMatrix[sourceRowIndex]!
+  ];
   return nextMatrix;
 }
 
@@ -155,23 +181,31 @@ function detectZeroTransitions(
   return { gained, destroyed };
 }
 
-function operationNotation(targetRowIndex: number, sourceRowIndex: number, factor: number): string {
+function formatFactorForNotation(value: number): string {
+  const normalized = formatNumber(value);
+  return normalized === "1" ? "" : normalized === "-1" ? "-" : normalized;
+}
+
+function operationNotation(
+  type: LgsOperationType,
+  targetRowIndex: number,
+  sourceRowIndex: number,
+  sourceScale: number,
+  targetScale: number,
+  combineFactor: number
+): string {
   const target = toRoman(targetRowIndex);
   const source = toRoman(sourceRowIndex);
 
-  if (factor === 1) {
-    return `${target} + ${source}`;
+  if (type === "swap") {
+    return `${target} <-> ${source}`;
   }
 
-  if (factor === -1) {
-    return `${target} - ${source}`;
-  }
-
-  if (factor > 0) {
-    return `${target} + ${factor}*${source}`;
-  }
-
-  return `${target} - ${Math.abs(factor)}*${source}`;
+  const scaledTarget = `${formatFactorForNotation(targetScale)}${target}`;
+  const scaledSource = `${formatFactorForNotation(sourceScale)}${source}`;
+  const combineSymbol = combineFactor >= 0 ? "+" : "-";
+  const combineAbs = formatFactorForNotation(Math.abs(combineFactor));
+  return `${target} <- ${scaledTarget} ${combineSymbol} ${combineAbs}${scaledSource}`;
 }
 
 function buildBackSubEquationText(
@@ -241,15 +275,19 @@ export default function LgsChallengePage() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState("Loading Gaussian challenge...");
+  const [status, setStatus] = useState("Lade Gauss-Aufgabe...");
   const [latestReward, setLatestReward] = useState<AttemptResponse | null>(null);
 
   const [selectedSourceRow, setSelectedSourceRow] = useState<number | null>(null);
-  const [pendingPair, setPendingPair] = useState<{ source: number; target: number } | null>(null);
-  const [pendingFactor, setPendingFactor] = useState(1);
+  const [pendingPair, setPendingPair] = useState<PendingPair | null>(null);
+  const [pendingOperationType, setPendingOperationType] = useState<LgsOperationType>("combine");
+  const [pendingSourceScaleInput, setPendingSourceScaleInput] = useState("1");
+  const [pendingTargetScaleInput, setPendingTargetScaleInput] = useState("1");
+  const [pendingCombineFactorInput, setPendingCombineFactorInput] = useState("1");
   const [destroyWarningVisible, setDestroyWarningVisible] = useState(false);
   const [hardcoreEntryVisible, setHardcoreEntryVisible] = useState(false);
   const [hardcoreInputs, setHardcoreInputs] = useState<string[]>([]);
+  const [hardcoreCheckError, setHardcoreCheckError] = useState(false);
   const [celebrationCells, setCelebrationCells] = useState<string[]>([]);
   const [dangerCells, setDangerCells] = useState<string[]>([]);
 
@@ -257,6 +295,7 @@ export default function LgsChallengePage() {
   const [solvedValues, setSolvedValues] = useState<Array<number | null>>([]);
   const [activeBackRow, setActiveBackRow] = useState<number | null>(null);
   const [backInput, setBackInput] = useState("");
+  const [backInsertError, setBackInsertError] = useState(false);
   const [flyMessage, setFlyMessage] = useState<string | null>(null);
 
   const totalTargetCells = useMemo(
@@ -272,12 +311,52 @@ export default function LgsChallengePage() {
     [challenge, matrix, phase]
   );
 
+  const pendingSourceScale = useMemo(
+    () => parseRationalInput(pendingSourceScaleInput),
+    [pendingSourceScaleInput]
+  );
+  const pendingTargetScale = useMemo(
+    () => parseRationalInput(pendingTargetScaleInput),
+    [pendingTargetScaleInput]
+  );
+  const pendingCombineFactor = useMemo(
+    () => parseRationalInput(pendingCombineFactorInput),
+    [pendingCombineFactorInput]
+  );
+
   const previewMatrix = useMemo(() => {
     if (!pendingPair || matrix.length === 0) {
       return null;
     }
-    return applyRowReplacement(matrix, pendingPair.source, pendingPair.target, pendingFactor);
-  }, [matrix, pendingPair, pendingFactor]);
+
+    if (pendingOperationType === "swap") {
+      return applySwapOperation(matrix, pendingPair.source, pendingPair.target);
+    }
+
+    if (
+      pendingSourceScale === null ||
+      pendingTargetScale === null ||
+      pendingCombineFactor === null
+    ) {
+      return null;
+    }
+
+    return applyCombineOperation(
+      matrix,
+      pendingPair.source,
+      pendingPair.target,
+      pendingSourceScale,
+      pendingTargetScale,
+      pendingCombineFactor
+    );
+  }, [
+    matrix,
+    pendingCombineFactor,
+    pendingOperationType,
+    pendingPair,
+    pendingSourceScale,
+    pendingTargetScale
+  ]);
 
   const previewRow = useMemo(() => {
     if (!previewMatrix || !pendingPair) {
@@ -288,10 +367,14 @@ export default function LgsChallengePage() {
 
   function resetOperationPanel() {
     setPendingPair(null);
-    setPendingFactor(1);
+    setPendingOperationType("combine");
+    setPendingSourceScaleInput("1");
+    setPendingTargetScaleInput("1");
+    setPendingCombineFactorInput("1");
     setDestroyWarningVisible(false);
     setHardcoreEntryVisible(false);
     setHardcoreInputs([]);
+    setHardcoreCheckError(false);
   }
 
   function setPhaseForMatrix(nextMatrix: AugmentedMatrix) {
@@ -308,6 +391,7 @@ export default function LgsChallengePage() {
       setActiveBackRow(challenge.size - 1);
       setSolvedValues(resetSolved);
       setBackInput("");
+      setBackInsertError(false);
       setFlyMessage(null);
       setStatus("Stufenform erreicht. Starte jetzt das Rueckwaertseinsetzen.");
       return;
@@ -318,8 +402,11 @@ export default function LgsChallengePage() {
       setActiveBackRow(null);
       setSolvedValues(resetSolved);
       setBackInput("");
+      setBackInsertError(false);
       setFlyMessage(null);
-      setStatus("Unteres Dreieck ist null, aber ein Pivot auf der Diagonale ist 0. Nutze Undo oder andere Zeilenkombinationen.");
+      setStatus(
+        "Unteres Dreieck ist null, aber ein Pivot auf der Diagonale ist 0. Nutze Tausch oder Skalierung."
+      );
       return;
     }
 
@@ -327,6 +414,7 @@ export default function LgsChallengePage() {
     setActiveBackRow(null);
     setSolvedValues(resetSolved);
     setBackInput("");
+    setBackInsertError(false);
     setFlyMessage(null);
   }
 
@@ -334,7 +422,7 @@ export default function LgsChallengePage() {
     const initial = deepCopy(payload.initialMatrix);
     setChallenge(payload);
     setMatrix(initial);
-    setHistory([{ notation: "Start", matrix: deepCopy(initial) }]);
+    setHistory([{ notation: "Ausgangsmatrix", matrix: deepCopy(initial) }]);
     setHistoryIndex(0);
     setSelectedSourceRow(null);
     resetOperationPanel();
@@ -342,12 +430,23 @@ export default function LgsChallengePage() {
     setSolvedValues(Array.from({ length: payload.size }, () => null));
     setActiveBackRow(null);
     setBackInput("");
+    setBackInsertError(false);
     setFlyMessage(null);
+  }
+
+  function pulseBackInsertError() {
+    setBackInsertError(true);
+    window.setTimeout(() => setBackInsertError(false), 550);
+  }
+
+  function pulseHardcoreCheckError() {
+    setHardcoreCheckError(true);
+    window.setTimeout(() => setHardcoreCheckError(false), 550);
   }
 
   async function loadNextChallenge(filter: SizeFilter) {
     setLoading(true);
-    setStatus("Loading Gaussian challenge...");
+    setStatus("Lade Gauss-Aufgabe...");
 
     const query = filter === "mixed" ? "" : `?size=${filter}`;
     const response = await fetch(`/api/challenge/lgs/next${query}`, { method: "GET" });
@@ -355,7 +454,7 @@ export default function LgsChallengePage() {
 
     initializeChallenge(payload);
     setLoading(false);
-    setStatus(`New ${payload.matrixLabel} ready. Drag one row onto another to start elimination.`);
+    setStatus(`${payload.matrixLabel} bereit. Ziehe eine Zeile auf eine andere, um zu starten.`);
   }
 
   useEffect(() => {
@@ -368,11 +467,14 @@ export default function LgsChallengePage() {
     }
 
     setPendingPair({ source, target });
-    setPendingFactor(1);
+    setPendingOperationType("combine");
+    setPendingSourceScaleInput("1");
+    setPendingTargetScaleInput("1");
+    setPendingCombineFactorInput("1");
     setDestroyWarningVisible(false);
     setHardcoreEntryVisible(false);
     setHardcoreInputs([]);
-    setStatus(`Operation selected: ${toRoman(target)} + k*${toRoman(source)}. Tune k and preview.`);
+    setStatus(`Operation gewaehlt: ${toRoman(target)} und ${toRoman(source)}. Vorschau pruefen.`);
   }
 
   function commitOperation(nextMatrix: AugmentedMatrix, gained: string[], destroyed: string[]) {
@@ -380,8 +482,22 @@ export default function LgsChallengePage() {
       return;
     }
 
+    if (
+      pendingOperationType === "combine" &&
+      (pendingSourceScale === null || pendingTargetScale === null || pendingCombineFactor === null)
+    ) {
+      return;
+    }
+
     const truncatedHistory = history.slice(0, historyIndex + 1);
-    const notation = operationNotation(pendingPair.target, pendingPair.source, pendingFactor);
+    const notation = operationNotation(
+      pendingOperationType,
+      pendingPair.target,
+      pendingPair.source,
+      pendingSourceScale ?? 1,
+      pendingTargetScale ?? 1,
+      pendingCombineFactor ?? 1
+    );
     const nextHistory = [...truncatedHistory, { notation, matrix: deepCopy(nextMatrix) }];
 
     setHistory(nextHistory);
@@ -407,14 +523,34 @@ export default function LgsChallengePage() {
 
     setPhaseForMatrix(nextMatrix);
     if (gained.length > 0) {
-      setStatus(`Zero-party: ${gained.length} target cell(s) became zero.`);
+      setStatus(`Nullen-Party: ${gained.length} Zielzelle(n) wurden zu 0.`);
     } else {
-      setStatus(`Applied ${notation}.`);
+      setStatus(`${notation} angewendet.`);
     }
   }
 
   function verifyAndCommitFromMenu(forceDestroy = false) {
-    if (!challenge || !pendingPair || !previewMatrix) {
+    if (!challenge || !pendingPair) {
+      return;
+    }
+
+    if (pendingOperationType === "combine") {
+      if (
+        pendingSourceScale === null ||
+        pendingTargetScale === null ||
+        pendingCombineFactor === null
+      ) {
+        setStatus("Ungueltiger Faktor. Erlaubt: ganze Zahl, Dezimalzahl oder Bruch wie -1/2.");
+        return;
+      }
+
+      if (Math.abs(pendingTargetScale) < EPSILON) {
+        setStatus("Der Ziel-Skalierungsfaktor a darf nicht 0 sein.");
+        return;
+      }
+    }
+
+    if (!previewMatrix) {
       return;
     }
 
@@ -429,7 +565,7 @@ export default function LgsChallengePage() {
     if (mode === "hardcore" && !hardcoreEntryVisible) {
       setHardcoreEntryVisible(true);
       setHardcoreInputs(previewMatrix[pendingPair.target]!.map(() => ""));
-      setStatus("Hardcore-Modus: gib die neue Zielzeile selbst ein.");
+      setStatus("Selbst-rechnen-Modus: gib die neue Zielzeile selbst ein.");
       return;
     }
 
@@ -446,15 +582,17 @@ export default function LgsChallengePage() {
     }
 
     for (let index = 0; index < previewRow.length; index += 1) {
-      const parsed = parseNumericInput(hardcoreInputs[index] ?? "");
+      const parsed = parseRationalInput(hardcoreInputs[index] ?? "");
       if (parsed === null || Math.abs(parsed - previewRow[index]!) > 1e-4) {
+        pulseHardcoreCheckError();
         setStatus(
-          `Hardcore check failed at column ${index + 1}. Expected ${formatNumber(previewRow[index]!)}, received ${hardcoreInputs[index] || "blank"}.`
+          `Selbstrechnen-Pruefung fehlgeschlagen in Spalte ${index + 1}. Erwartet ${formatNumber(previewRow[index]!)}, erhalten ${hardcoreInputs[index] || "leer"}.`
         );
         return;
       }
     }
 
+    setHardcoreCheckError(false);
     verifyAndCommitFromMenu(true);
   }
 
@@ -471,7 +609,7 @@ export default function LgsChallengePage() {
     setCelebrationCells([]);
     setDangerCells([]);
     setPhaseForMatrix(snapshot);
-    setStatus(`Rewound to step ${index}: ${history[index]!.notation}.`);
+    setStatus(`Zu Schritt ${index} zurueckgespult: ${history[index]!.notation}.`);
   }
 
   function submitBackSubValue() {
@@ -479,20 +617,21 @@ export default function LgsChallengePage() {
       return;
     }
 
-    const parsed = parseNumericInput(backInput);
+    const parsed = parseRationalInput(backInput);
     if (parsed === null) {
-      setStatus("Please enter a valid numeric value.");
+      setStatus("Bitte einen gueltigen Zahlenwert oder Bruch eingeben.");
       return;
     }
 
     const expected = computeBackSubTarget(matrix, activeBackRow, challenge.size, solvedValues);
     if (expected === null) {
-      setStatus("Cannot evaluate this row because the pivot is zero or later values are missing.");
+      setStatus("Diese Zeile kann nicht berechnet werden, da Pivot oder Folgewert fehlt.");
       return;
     }
 
     if (Math.abs(parsed - expected) > 1e-4) {
-      setStatus(`Not quite. Expected ${formatNumber(expected)} for ${challenge.variableNames[activeBackRow]}.`);
+      pulseBackInsertError();
+      setStatus(`Noch nicht korrekt. Erwartet: ${formatNumber(expected)} fuer ${challenge.variableNames[activeBackRow]}.`);
       return;
     }
 
@@ -500,19 +639,20 @@ export default function LgsChallengePage() {
     nextSolved[activeBackRow] = Number(parsed.toFixed(6));
     setSolvedValues(nextSolved);
     setBackInput("");
+    setBackInsertError(false);
 
     if (activeBackRow > 0) {
       const currentVariable = challenge.variableNames[activeBackRow];
-      setFlyMessage(`${currentVariable} = ${formatNumber(parsed)} injected upward.`);
+      setFlyMessage(`${currentVariable} = ${formatNumber(parsed)} wurde nach oben eingesetzt.`);
       window.setTimeout(() => setFlyMessage(null), 1200);
       setActiveBackRow(activeBackRow - 1);
-      setStatus(`Correct. Continue with row ${toRoman(activeBackRow - 1)}.`);
+      setStatus(`Korrekt. Weiter mit Zeile ${toRoman(activeBackRow - 1)}.`);
       return;
     }
 
     setActiveBackRow(null);
     setPhase("complete");
-    setStatus("Back-substitution complete. Submit as correct to claim XP.");
+    setStatus("Rueckwaertseinsetzen abgeschlossen. Jetzt als korrekt einreichen.");
   }
 
   async function submitAttempt(isCorrect: boolean) {
@@ -545,18 +685,18 @@ export default function LgsChallengePage() {
     setLatestReward(reward);
 
     await loadNextChallenge(sizeFilter);
-    setStatus(isCorrect ? "Marked correct. New system loaded." : "Marked wrong. New system loaded.");
+    setStatus(isCorrect ? "Als korrekt markiert. Neues System geladen." : "Als falsch markiert. Neues System geladen.");
   }
 
   return (
     <section className="grid" style={{ gap: "1rem" }}>
       <div className="card challenge-shell lgs-shell">
         <div className="challenge-top-row">
-          <h1>Interactive Gaussian Solver</h1>
+          <h1>Interaktiver Gauss-Trainer</h1>
 
           <div className="lgs-controls">
             <label>
-              <span className="muted">System size</span>
+              <span className="muted">Systemgroesse</span>
               <br />
               <select
                 value={String(sizeFilter)}
@@ -565,9 +705,9 @@ export default function LgsChallengePage() {
                     event.target.value === "mixed" ? "mixed" : (Number(event.target.value) as LgsSize)
                   )
                 }
-                aria-label="Select matrix size"
+                aria-label="Matrixgroesse waehlen"
               >
-                <option value="mixed">Mixed (3x3 / 4x4)</option>
+                <option value="mixed">Gemischt (3x3 / 4x4)</option>
                 {lgsSizes.map((size) => (
                   <option key={size} value={size}>
                     {size}x{size}
@@ -577,16 +717,16 @@ export default function LgsChallengePage() {
             </label>
 
             <label>
-              <span className="muted">Mode</span>
+              <span className="muted">Modus</span>
               <br />
               <select
                 value={mode}
                 onChange={(event) => setMode(event.target.value as LgsMode)}
-                aria-label="Select challenge mode"
+                aria-label="Modus waehlen"
               >
                 {lgsModes.map((item) => (
                   <option key={item} value={item}>
-                    {item === "strategy" ? "Rechenknecht (Strategy)" : "Selber-Rechnen (Hardcore)"}
+                    {item === "strategy" ? "Strategie (App rechnet)" : "Selbst rechnen"}
                   </option>
                 ))}
               </select>
@@ -599,12 +739,12 @@ export default function LgsChallengePage() {
         </p>
         {challenge ? (
           <p className="muted">
-            {challenge.matrixLabel} | Target zeros: {completedTargetCells}/{totalTargetCells}
+            {challenge.matrixLabel} | Ziel-Nullen: {completedTargetCells}/{totalTargetCells}
           </p>
         ) : null}
 
         <div className="lgs-layout">
-          <div className="lgs-matrix-stage" role="region" aria-label="Augmented matrix stage">
+          <div className="lgs-matrix-stage" role="region" aria-label="Erweiterte Matrix">
             <div className="lgs-bracket lgs-bracket-left" aria-hidden="true" />
             <div className="lgs-matrix">
               {matrix.map((row, rowIndex) => (
@@ -636,7 +776,7 @@ export default function LgsChallengePage() {
 
                     if (selectedSourceRow === null) {
                       setSelectedSourceRow(rowIndex);
-                      setStatus(`Source row ${toRoman(rowIndex)} selected. Choose a target row.`);
+                      setStatus(`Quellzeile ${toRoman(rowIndex)} gewaehlt. Zielzeile auswaehlen.`);
                       return;
                     }
 
@@ -682,8 +822,8 @@ export default function LgsChallengePage() {
           </div>
 
           <aside className="card lgs-history-card">
-            <h2>History / Undo</h2>
-            <p className="muted">Click any step to rewind the matrix.</p>
+            <h2>Verlauf / Rueckgaengig</h2>
+            <p className="muted">Klicke auf einen Schritt, um visuell zurueckzuspulen.</p>
             <ol className="lgs-history-list">
               {history.map((entry, index) => (
                 <li key={`history-${index}`}>
@@ -693,7 +833,7 @@ export default function LgsChallengePage() {
                     onClick={() => jumpToHistory(index)}
                     disabled={loading}
                   >
-                    {index === 0 ? "Start" : `${index}. ${entry.notation}`}
+                    {index === 0 ? "Startzustand" : `${index}. ${entry.notation}`}
                   </button>
                 </li>
               ))}
@@ -703,44 +843,85 @@ export default function LgsChallengePage() {
 
         {pendingPair ? (
           <div className="card lgs-operator-card">
-            <h2>Combine Rows</h2>
+            <h2>Zeilenoperation</h2>
             <p className="muted">
-              {toRoman(pendingPair.target)} + k*{toRoman(pendingPair.source)}
+              Quelle: {toRoman(pendingPair.source)} | Ziel: {toRoman(pendingPair.target)}
             </p>
-            <div className="actions-row">
-              <button type="button" className="btn btn-outline" onClick={() => setPendingFactor(1)}>
-                {toRoman(pendingPair.target)} + {toRoman(pendingPair.source)}
-              </button>
-              <button type="button" className="btn btn-outline" onClick={() => setPendingFactor(-1)}>
-                {toRoman(pendingPair.target)} - {toRoman(pendingPair.source)}
-              </button>
-            </div>
             <label className="lgs-factor-input">
-              <span>Custom factor k</span>
-              <input
-                type="number"
-                value={pendingFactor}
-                step={1}
-                min={-8}
-                max={8}
-                onChange={(event) => setPendingFactor(Number(event.target.value))}
-              />
+              <span>Operationstyp</span>
+              <select
+                value={pendingOperationType}
+                onChange={(event) => setPendingOperationType(event.target.value as LgsOperationType)}
+                aria-label="Operationstyp waehlen"
+              >
+                <option value="combine">Kombinieren (skalierbar)</option>
+                <option value="swap">Zeilen tauschen</option>
+              </select>
             </label>
-            <p className="muted">
-              Live preview ({toRoman(pendingPair.target)}):{" "}
-              {previewRow ? previewRow.map((item) => formatNumber(item)).join(", ") : "..."}
-            </p>
+
+            {pendingOperationType === "combine" ? (
+              <>
+                <p className="muted">
+                  {toRoman(pendingPair.target)} &larr; a*{toRoman(pendingPair.target)} + k*(b*
+                  {toRoman(pendingPair.source)})
+                </p>
+                <div className="lgs-factor-grid">
+                  <label className="lgs-factor-input">
+                    <span>a (Skalierung Zielzeile, a != 0)</span>
+                    <input
+                      type="text"
+                      value={pendingTargetScaleInput}
+                      onChange={(event) => setPendingTargetScaleInput(event.target.value)}
+                      placeholder="z.B. 1 oder 1/2"
+                    />
+                  </label>
+                  <label className="lgs-factor-input">
+                    <span>b (Skalierung Quellzeile)</span>
+                    <input
+                      type="text"
+                      value={pendingSourceScaleInput}
+                      onChange={(event) => setPendingSourceScaleInput(event.target.value)}
+                      placeholder="z.B. 1 oder -3/2"
+                    />
+                  </label>
+                  <label className="lgs-factor-input">
+                    <span>k (Kombinationsfaktor)</span>
+                    <input
+                      type="text"
+                      value={pendingCombineFactorInput}
+                      onChange={(event) => setPendingCombineFactorInput(event.target.value)}
+                      placeholder="z.B. -1/2"
+                    />
+                  </label>
+                </div>
+              </>
+            ) : (
+              <p className="muted">
+                {toRoman(pendingPair.target)} &harr; {toRoman(pendingPair.source)}
+              </p>
+            )}
+
+            {mode === "strategy" ? (
+              <p className="muted">
+                Vorschau ({toRoman(pendingPair.target)}):{" "}
+                {previewRow ? previewRow.map((item) => formatNumber(item)).join(", ") : "ungueltige Faktor-Eingabe"}
+              </p>
+            ) : (
+              <p className="muted">
+                Vorschau im Selbst-rechnen-Modus deaktiviert.
+              </p>
+            )}
 
             {destroyWarningVisible ? (
               <p className="lgs-warning">
-                Vorsicht! Du zerstoerst schon erreichte Nullen. Nutze "Apply Anyway" nur wenn du sicher bist.
+                Vorsicht! Du zerstoerst bereits erreichte Nullen. Nutze "Trotzdem anwenden" nur wenn du sicher bist.
               </p>
             ) : null}
 
             {mode === "hardcore" && hardcoreEntryVisible && previewRow ? (
               <div className="lgs-hardcore-box">
-                <h3>Hardcore Input</h3>
-                <p className="muted">Type the full target row before applying.</p>
+                <h3>Selbst-Eingabe</h3>
+                <p className="muted">Gib vor dem Anwenden die komplette Zielzeile selbst ein.</p>
                 <div className="lgs-hardcore-grid">
                   {previewRow.map((_, colIndex) => (
                     <input
@@ -752,7 +933,7 @@ export default function LgsChallengePage() {
                         next[colIndex] = event.target.value;
                         setHardcoreInputs(next);
                       }}
-                      aria-label={`Hardcore value column ${colIndex + 1}`}
+                      aria-label={`Wert Spalte ${colIndex + 1}`}
                     />
                   ))}
                 </div>
@@ -761,23 +942,27 @@ export default function LgsChallengePage() {
 
             <div className="actions-row">
               {mode === "hardcore" && hardcoreEntryVisible ? (
-                <button type="button" className="btn btn-primary" onClick={verifyHardcoreInputsAndCommit}>
-                  Verify & Apply
+                <button
+                  type="button"
+                  className={`btn btn-primary lgs-back-insert-btn ${hardcoreCheckError ? "lgs-back-insert-btn-error" : ""}`}
+                  onClick={verifyHardcoreInputsAndCommit}
+                >
+                  Pruefen & Anwenden
                 </button>
               ) : (
                 <button type="button" className="btn btn-primary" onClick={() => verifyAndCommitFromMenu(false)}>
-                  Apply Operation
+                  Operation anwenden
                 </button>
               )}
 
               {destroyWarningVisible ? (
                 <button type="button" className="btn btn-danger" onClick={() => verifyAndCommitFromMenu(true)}>
-                  Apply Anyway
+                  Trotzdem anwenden
                 </button>
               ) : null}
 
               <button type="button" className="btn btn-outline" onClick={resetOperationPanel}>
-                Cancel
+                Abbrechen
               </button>
             </div>
           </div>
@@ -785,7 +970,7 @@ export default function LgsChallengePage() {
 
         {(phase === "back-substitution" || phase === "complete") && challenge ? (
           <div className="card lgs-backsub-card">
-            <h2>Back-Substitution</h2>
+            <h2>Rueckwaertseinsetzen</h2>
 
             {phase === "back-substitution" && activeBackRow !== null ? (
               <>
@@ -800,17 +985,21 @@ export default function LgsChallengePage() {
                   )}
                 </p>
                 <label className="lgs-back-input">
-                  <span>Enter {challenge.variableNames[activeBackRow]}</span>
+                  <span>Wert fuer {challenge.variableNames[activeBackRow]} eingeben</span>
                   <input
                     type="text"
                     value={backInput}
                     onChange={(event) => setBackInput(event.target.value)}
-                    aria-label={`Enter value for ${challenge.variableNames[activeBackRow]}`}
+                    aria-label={`Wert fuer ${challenge.variableNames[activeBackRow]} eingeben`}
                   />
                 </label>
                 <div className="actions-row">
-                  <button type="button" className="btn btn-primary" onClick={submitBackSubValue}>
-                    Confirm Value
+                  <button
+                    type="button"
+                    className={`btn btn-primary lgs-back-insert-btn ${backInsertError ? "lgs-back-insert-btn-error" : ""}`}
+                    onClick={submitBackSubValue}
+                  >
+                    Einsetzen
                   </button>
                 </div>
               </>
@@ -836,7 +1025,7 @@ export default function LgsChallengePage() {
             onClick={() => void submitAttempt(true)}
             disabled={loading || phase !== "complete"}
           >
-            Submit Correct
+            Korrekt einreichen
           </button>
           <button
             type="button"
@@ -844,7 +1033,7 @@ export default function LgsChallengePage() {
             onClick={() => void submitAttempt(false)}
             disabled={loading}
           >
-            Skip / Submit Wrong
+            Ueberspringen / Falsch einreichen
           </button>
         </div>
       </div>
@@ -852,10 +1041,10 @@ export default function LgsChallengePage() {
       {latestReward ? (
         <div className="card reward-card" aria-live="polite">
           <p>
-            +{latestReward.xpAwarded} XP earned. Level {latestReward.newLevel}, total {latestReward.newTotalXp} XP.
+            +{latestReward.xpAwarded} XP erhalten. Level {latestReward.newLevel}, insgesamt {latestReward.newTotalXp} XP.
           </p>
           {latestReward.newBadges.length > 0 ? (
-            <p>New badges: {latestReward.newBadges.map((badge) => badge.label).join(", ")}</p>
+            <p>Neue Badges: {latestReward.newBadges.map((badge) => badge.label).join(", ")}</p>
           ) : null}
         </div>
       ) : null}

@@ -6,7 +6,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "GraphQuest",
-  description: "A lightweight math sketching challenge app"
+  description: "Eine kompakte Mathe-Lernapp mit interaktiven Aufgaben"
 };
 
 export default function RootLayout({
@@ -15,21 +15,21 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="de">
       <body>
         <a className="skip-link" href="#main-content">
-          Skip to main content
+          Direkt zum Inhalt springen
         </a>
         <header className="site-header">
           <div className="container nav-shell">
             <Link href="/" className="brand">
               GraphQuest
             </Link>
-            <nav aria-label="Main navigation" className="main-nav">
-              <Link href="/challenge/graphing">Graphing</Link>
-              <Link href="/challenge/trigonometry">Trigonometry</Link>
-              <Link href="/challenge/lgs">LGS Solver</Link>
-              <Link href="/profile">Profile</Link>
+            <nav aria-label="Hauptnavigation" className="main-nav">
+              <Link href="/challenge/graphing">Graphen</Link>
+              <Link href="/challenge/trigonometry">Trigonometrie</Link>
+              <Link href="/challenge/lgs">LGS-Trainer</Link>
+              <Link href="/profile">Profil</Link>
             </nav>
           </div>
         </header>
