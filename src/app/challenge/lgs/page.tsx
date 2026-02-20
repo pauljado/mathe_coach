@@ -514,7 +514,7 @@ export default function LgsChallengePage() {
       window.setTimeout(() => setCelebrationCells([]), 900);
     }
 
-    if (destroyed.length > 0) {
+    if (pendingOperationType !== "swap" && destroyed.length > 0) {
       setDangerCells(destroyed);
       window.setTimeout(() => setDangerCells([]), 1100);
     } else {
@@ -555,7 +555,7 @@ export default function LgsChallengePage() {
     }
 
     const transitions = detectZeroTransitions(matrix, previewMatrix, challenge.targetZeroMask);
-    if (transitions.destroyed.length > 0 && !forceDestroy) {
+    if (pendingOperationType !== "swap" && transitions.destroyed.length > 0 && !forceDestroy) {
       setDestroyWarningVisible(true);
       setDangerCells(transitions.destroyed);
       setStatus("Vorsicht: diese Operation zerstoert bereits erreichte Nullen. Bist du sicher?");
